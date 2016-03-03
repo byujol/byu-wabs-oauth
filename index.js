@@ -50,7 +50,7 @@ exports.getAccessTokenFromAuthorizationCode = function(clientID, clientSecret, w
           .then(function(results) {
             data['access_token'] = access_token;
             data['refresh_token'] = refresh_token;
-            data['data'] = results;
+            data['open_id'] = results;
             return data;
           })
           .then(function(value) {
