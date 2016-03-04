@@ -25,8 +25,7 @@ function getWellKnown(clientID, clientSecret, wellKnownURL) {
       );
     });
 }
-// The query_params parameter should at least include the redirect_uri, scope, and state properties.
-// { redirect_uri: 'https://something.byu.edu/wabs', scope: 'openid', state: 'recommend this to be a value that represents the state of the app or uniquely identifies the request'}
+
 exports.generateAuthorizationCodeRequestURL = function(clientID, clientSecret, wellKnownURL, query_params, callback){
   var params = query_params || {};
   params['response_type'] = 'code';
@@ -39,18 +38,17 @@ exports.generateAuthorizationCodeRequestURL = function(clientID, clientSecret, w
     });
 };
 
-exports.getAccessTokenFromAuthorizationCode = function(clientID, clientSecret, wellKnownURL, authorization_code, redirect_uri, callback) {
-  var data = {'grant_type': 'authorization_code', redirect_uri: redirect_uri };
+function _retrieveAccessToken(clientID, clientSecret, wellKnownURL, code_or_token, params, callback) {
   getWellKnown(clientID, clientSecret, wellKnownURL)
     .then(function(oauth2Handle) {
-      oauth2Handle.getOAuthAccessToken(authorization_code, data, function(error, access_token, refresh_token, results){
+      oauth2Handle.getOAuthAccessToken(code_or_token, params, function(error, access_token, refresh_token, results){
         var data = {};
         data['results'] = results;
         byujwt.verifyJWT(results.id_token, wellKnownURL)
-          .then(function(results) {
+          .then(function(open_id_value) {
             data['access_token'] = access_token;
             data['refresh_token'] = refresh_token;
-            data['open_id'] = results;
+            data['open_id'] = open_id_value;
             return data;
           })
           .then(function(value) {
@@ -61,4 +59,14 @@ exports.getAccessTokenFromAuthorizationCode = function(clientID, clientSecret, w
           });
       });
     });
+}
+
+exports.getAccessTokenFromAuthorizationCode = function(clientID, clientSecret, wellKnownURL, authorization_code, redirect_uri, callback) {
+  var params = {'grant_type': 'authorization_code', 'redirect_uri': redirect_uri };
+  _retrieveAccessToken(clientID, clientSecret, wellKnownURL, authorization_code, params, callback);
+};
+
+exports.getAccessTokenFromRefreshToken = function(clientID, clientSecret, wellKnownURL, refresh_token, callback) {
+  var params = {'grant_type': 'refresh_token'};
+  _retrieveAccessToken(clientID, clientSecret, wellKnownURL, refresh_token, params, callback);
 };

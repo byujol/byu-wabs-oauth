@@ -4,6 +4,7 @@ Convenience library to handle oauth requests specific to BYU's well-known config
 ## Functions
 * generateAuthorizationCodeRequestURL
 * getAccessTokenFromAuthorizationCode
+* getAccessTokenFromRefreshToken
 
 ## generateAuthorizationCodeRequestURL(clientID, clientSecret, wellKnownURL, query_params, callback)
 generateAuthorizationCodeRequestURL constructs the request URL to invoke for an Oauth authorization code grant type request.
@@ -21,4 +22,13 @@ Parameters:
 - clientSecret: The consumer secret from the application defined in WSO2
 - wellKnownURL: The Open ID configuration page (currently defined as https://api.byu.edu/.well-known/openid-configuration). You can specify the test Open ID configuration here for test development as well.
 - authorization_code: The value retrieved from the interaction of invoking the generateAuthorizationCodeRequestURL request.
+- callback: callback function
+
+## getAccessTokenFromRefreshToken(clientID, clientSecret, wellKnownURL, refresh_token, redirect_uri, callback)
+getAccessTokenFromRefreshToken produces an access token from the refresh token provided.
+Parameters:
+- clientID: The consumer key from the application defined in WSO2
+- clientSecret: The consumer secret from the application defined in WSO2
+- wellKnownURL: The Open ID configuration page (currently defined as https://api.byu.edu/.well-known/openid-configuration). You can specify the test Open ID configuration here for test development as well.
+- refresh_token: The value retrieved from a previous call to gain an access token and used to gain a new access token when the current access token has expired or may be expiring soon.
 - callback: callback function
