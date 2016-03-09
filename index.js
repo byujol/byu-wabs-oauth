@@ -43,7 +43,7 @@ function _retrieveAccessToken(clientID, clientSecret, wellKnownURL, code_or_toke
     .then(function(oauth2Handle) {
       oauth2Handle.getOAuthAccessToken(code_or_token, params, function(error, access_token, refresh_token, results){
         if(error) {
-          callback(reason,null);
+          callback(error,null);
         }
         else {
           var data = {};
