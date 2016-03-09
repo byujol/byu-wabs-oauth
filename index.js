@@ -42,22 +42,30 @@ function _retrieveAccessToken(clientID, clientSecret, wellKnownURL, code_or_toke
   getWellKnown(clientID, clientSecret, wellKnownURL)
     .then(function(oauth2Handle) {
       oauth2Handle.getOAuthAccessToken(code_or_token, params, function(error, access_token, refresh_token, results){
-        var data = {};
-        data['results'] = results;
-        byujwt.verifyJWT(results.id_token, wellKnownURL)
-          .then(function(open_id_value) {
-            data['access_token'] = access_token;
-            data['refresh_token'] = refresh_token;
-            data['open_id'] = open_id_value;
-            return data;
-          })
-          .then(function(value) {
-            callback(null,value);
-          })
-          .catch(function(reason) {
-            callback(reason,null);
-          });
+        if(error) {
+          callback(reason,null);
+        }
+        else {
+          var data = {};
+          data['results'] = results;
+          byujwt.verifyJWT(results.id_token, wellKnownURL)
+            .then(function(open_id_value) {
+              data['access_token'] = access_token;
+              data['refresh_token'] = refresh_token;
+              data['open_id'] = open_id_value;
+              return data;
+            })
+            .then(function(value) {
+              callback(null,value);
+            })
+            .catch(function(reason) {
+              callback(reason,null);
+            });
+        }
       });
+    })
+    .catch(function(error) {
+      callback(error,null);
     });
 }
 
