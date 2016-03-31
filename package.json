@@ -1,6 +1,6 @@
 {
   "name": "byu-wabs-oauth",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Convenience library to handle oauth requests specific to BYU's well-known configuration data",
   "main": "index.js",
   "repository": {
