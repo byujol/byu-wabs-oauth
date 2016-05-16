@@ -1,34 +1,172 @@
 # byu-wabs-oauth
-Convenience library to handle oauth requests specific to BYU's well-known configuration data
 
-## Functions
-* generateAuthorizationCodeRequestURL
-* getAccessTokenFromAuthorizationCode
-* getAccessTokenFromRefreshToken
+This library provides some functions that will simplify the process of getting, refreshing, revoking, and verifying [Brigham Young University](http://www.byu.edu)'s OAuth tokens.
 
-## generateAuthorizationCodeRequestURL(clientID, clientSecret, wellKnownURL, query_params, callback)
-generateAuthorizationCodeRequestURL constructs the request URL to invoke for an Oauth authorization code grant type request.
-Parameters:
-- clientID: The consumer key from the application defined in WSO2
-- clientSecret: The consumer secret from the application defined in WSO2
-- wellKnownURL: The Open ID configuration page (currently defined as https://api.byu.edu/.well-known/openid-configuration). You can specify the test Open ID configuration here for test development as well.
-- query_params: The query_params parameter should at least include the redirect_uri, scope, and state properties. (i.e. { redirect_uri: 'https://something.byu.edu/wabs', scope: 'openid', state: 'recommend this to be a value that represents the state of the app or uniquely identifies the request'})
-- callback: callback function
+## Installation
 
-## getAccessTokenFromAuthorizationCode(clientID, clientSecret, wellKnownURL, authorization_code, redirect_uri, callback)
-getAccessTokenFromAuthorizationCode produces an access token from the authorization code provided.
-Parameters:
-- clientID: The consumer key from the application defined in WSO2
-- clientSecret: The consumer secret from the application defined in WSO2
-- wellKnownURL: The Open ID configuration page (currently defined as https://api.byu.edu/.well-known/openid-configuration). You can specify the test Open ID configuration here for test development as well.
-- authorization_code: The value retrieved from the interaction of invoking the generateAuthorizationCodeRequestURL request.
-- callback: callback function
+```sh
+$ npm install byu-wabs-oauth
+```
 
-## getAccessTokenFromRefreshToken(clientID, clientSecret, wellKnownURL, refresh_token, redirect_uri, callback)
-getAccessTokenFromRefreshToken produces an access token from the refresh token provided.
-Parameters:
-- clientID: The consumer key from the application defined in WSO2
-- clientSecret: The consumer secret from the application defined in WSO2
-- wellKnownURL: The Open ID configuration page (currently defined as https://api.byu.edu/.well-known/openid-configuration). You can specify the test Open ID configuration here for test development as well.
-- refresh_token: The value retrieved from a previous call to gain an access token and used to gain a new access token when the current access token has expired or may be expiring soon.
-- callback: callback function
+## API
+
+### byuWabsOauth ( clientId: string, clientSecret: string, wellKnownUrl: string ) : Object
+
+Get an object with functions for getting, refreshing, revoking and verifying [Brigham Young University](http://www.byu.edu)'s OAuth tokens.
+
+**Parameters**
+
+* **clientId** - The client ID (a.k.a. consumer key).
+* **clientSecret** - The client secret (a.k.a. consumer secret).
+* **wellKnownUrl** - The URL to query for WSO2 endpoints.
+
+**Returns** an object with the following functions:
+
+* [getClientGrantAccessToken](#getClientGrantAccessToken)
+* [getCodeGrantAccessToken](#getCodeGrantAccessToken)
+* [getCodeGrantAuthorizeUrl](#getCodeGrantAuthorizeUrl)
+* [refreshTokens](#refreshTokens)
+* [revokeTokens](#revokeTokens)
+
+#### #getClientGrantAccessToken ( ) : Promise\<[Token](#token)\>
+
+Get a client grant access token. Client grant tokens only require the client's credentials (not the resource owner's) to get an access token.
+
+**Parameters**
+
+None
+
+**Returns**:
+
+A Promise that resolves to a [Token](#token) object.
+
+**Example**
+
+```js
+const byuOauth = require('byu-wabs-oauth');
+const oauth = byuOauth('<client_id>', '<client_secret>', 'http://well-known-url.com');
+oauth.getClientGrantAccessToken()
+    .then(function(token) {
+        console.log('Access token: ' + token.accessToken);
+    });
+```
+
+#### #getCodeGrantAccessToken ( code: string, redirectUri: string ) : Promise\<[Token](#token)\>
+
+**Parameters**
+
+* **code** - The grant code supplied by the authorize url.
+* **redirectUri** - The URI to redirect the client to once the token has been acquired.
+
+**Returns**
+
+A Promise that resolves to a [Token](#token) object.
+
+**Example**
+
+```js
+const byuOauth = require('byu-wabs-oauth');
+const oauth = byuOauth('<client_id>', '<client_secret>', 'http://well-known-url.com');
+oauth.getCodeGrantAccessToken('<some retrieved code>', 'http://somehost.com')
+    .then(function(token) {
+        console.log('Access token: ' + token.accessToken);
+    });
+```
+
+#### #getCodeGrantAuthorizeUrl ( redirectUri: string, scope?: string, state?: string ) : Promise\<string\>
+
+Get the URL to send a client to to authorize the application to use the resource owner's information.
+
+**Parameters**
+
+* **redirectUri** - The URI to redirect the client to once that code has been acquired.
+* **scope** - *Optional* - The scope to authorize the application for.
+* **state** - *Optional* - A string representing state information for the application.
+
+**Returns**
+
+A Promise that resolves to a string representing the authorization URL.
+
+**Example**
+
+```js
+const byuOauth = require('byu-wabs-oauth');
+const oauth = byuOauth('<client_id>', '<client_secret>', 'http://well-known-url.com');
+oauth.getCodeGrantAuthorizeUrl('http://somehost.com')
+    .then(function(url) {
+        console.log('URL: ' + url);
+    });
+```
+
+#### #refreshTokens ( accessToken: string, refreshToken: string ) : Promise\<[Token](#token)\>
+
+Get a new set of tokens, using both the access token and the refresh token.
+
+**Parameters**
+
+* **accessToken** - The old access token.
+* **refreshToken** - The old refresh token.
+
+**Returns**
+
+A Promise that resolves to a [Token](#token) object.
+
+**Example**
+
+```js
+const byuOauth = require('byu-wabs-oauth');
+const oauth = byuOauth('<client_id>', '<client_secret>', 'http://well-known-url.com');
+oauth.refreshTokens('<access_token>', '<refresh_token>')
+    .then(function(token) {
+        console.log('Access token: ' + token.accessToken);
+    });
+```
+
+### #revokeTokens ( accessToken: string, refreshToken?: string ) : Promise\<void\>
+
+Revoke tokens so that they are no longer usable.
+
+**Parameters**
+
+* **accessToken** - The old access token.
+* **refreshToken** - *Optional* - The old refresh token.
+
+**Returns**
+
+A Promise that resolves to `undefined`.
+
+**Example**
+
+```js
+const byuOauth = require('byu-wabs-oauth');
+const oauth = byuOauth('<client_id>', '<client_secret>', 'http://well-known-url.com');
+oauth.revokeTokens('<access_token>', '<refresh_token>')
+    .then(function(token) {
+        console.log('Tokens revoked');
+    });
+```
+
+## Token
+
+A token object has the following structure:
+
+```js
+{
+    accessToken: string,
+    expiresIn: number,
+    openId: [string, void],             // string or undefined
+    refreshToken: [string, void],       // string or undefined
+    scope: string,
+    tokenType: string
+}
+```
+
+## Testing
+
+To run tests you need to first set up a client ID and client secret. Once done then you can run tests on this library by running the following command:
+
+```sh
+$ npm test -- --client-id=<client_id> --client-secret=<client_secret> --well-known-url=<well_known_url> --redirect-uri=<redirect_uri> --net-id=<net_id> --password=<password>
+```
+
+Note that if the net id used requires dual authentication that the tests will not pass.

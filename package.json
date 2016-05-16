@@ -1,21 +1,35 @@
 {
   "name": "byu-wabs-oauth",
-  "version": "0.0.5",
-  "description": "Convenience library to handle oauth requests specific to BYU's well-known configuration data",
+  "version": "1.0.0",
+  "description": "",
   "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "express": "^4.13.4",
+    "oauth": "^0.9.14",
+    "prompt": "^1.0.0",
+    "request": "^2.69.0",
+    "request-promise": "^3.0.0"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^2.4.5",
+    "phantom": "^2.1.1",
+    "phantomjs-prebuilt": "^2.1.7"
+  },
+  "scripts": {
+    "test": "mocha tests/*.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/byu-oit-appdev/byu-wabs-oauth.git"
   },
-  "author": "Matthew Hailstone",
+  "author": "",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/byu-oit-appdev/byu-wabs-oauth/issues"
   },
-  "homepage": "https://github.com/byu-oit-appdev/byu-wabs-oauth#readme",
-  "dependencies": {
-    "oauth": "^0.9.14",
-    "bluebird": "^3.3.1",
-    "byu-jwt": "^0.0.3"
-  }
+  "homepage": "https://github.com/byu-oit-appdev/byu-wabs-oauth#readme"
 }
