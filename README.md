@@ -4,6 +4,14 @@ This library provides some functions that will simplify the process of getting, 
 
 ## Installation
 
+If you don't want to install all of the testing baggage (which there is a lot of) you'll want to do a production installation:
+
+```sh
+$ npm install --production byu-wabs-oauth
+```
+
+Alternatively if you'd like to install with testing libraries:
+
 ```sh
 $ npm install byu-wabs-oauth
 ```
