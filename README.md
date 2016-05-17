@@ -170,3 +170,4 @@ $ npm test -- --client-id=<client_id> --client-secret=<client_secret> --well-kno
 ```
 
 Note that if the net id used requires dual authentication that the tests will not pass.
+Tests may take a while to run, so you may need to specify the mocha `--timeout` option in the test command.

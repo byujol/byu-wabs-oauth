@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "bluebird": "^3.3.5",
+    "byu-jwt": "0.0.9",
     "express": "^4.13.4",
     "oauth": "^0.9.14",
     "prompt": "^1.0.0",
