@@ -25,7 +25,7 @@ Get an object with functions for getting, refreshing, revoking and verifying [Br
 **Returns** an object with the following functions:
 
 * [getClientGrantAccessToken](#getclientgrantaccesstoken)
-* [getCodeGrantAccessToken](#getcdegrantaccesstoken)
+* [getCodeGrantAccessToken](#getcodegrantaccesstoken)
 * [getCodeGrantAuthorizeUrl](#getcodegrantauthorizeurl)
 * [refreshTokens](#refreshtokens)
 * [revokeTokens](#revoketokens)
