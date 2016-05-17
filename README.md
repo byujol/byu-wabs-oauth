@@ -10,7 +10,9 @@ $ npm install byu-wabs-oauth
 
 ## API
 
-### byuWabsOauth ( clientId: string, clientSecret: string, wellKnownUrl: string ) : Object
+### byuWabsOauth
+
+**byuWabsOauth ( clientId: *string*, clientSecret: *string*, wellKnownUrl: *string* ) :** ***Object***
 
 Get an object with functions for getting, refreshing, revoking and verifying [Brigham Young University](http://www.byu.edu)'s OAuth tokens.
 
@@ -28,7 +30,9 @@ Get an object with functions for getting, refreshing, revoking and verifying [Br
 * [refreshTokens](#refreshTokens)
 * [revokeTokens](#revokeTokens)
 
-#### #getClientGrantAccessToken ( ) : Promise\<[Token](#token)\>
+### getClientGrantAccessToken
+
+**#getClientGrantAccessToken ( ) :** ***Promise\<[Token](#token)\>***
 
 Get a client grant access token. Client grant tokens only require the client's credentials (not the resource owner's) to get an access token.
 
@@ -51,7 +55,9 @@ oauth.getClientGrantAccessToken()
     });
 ```
 
-#### #getCodeGrantAccessToken ( code: string, redirectUri: string ) : Promise\<[Token](#token)\>
+### getCodeGrantAccessToken
+
+**#getCodeGrantAccessToken ( code: *string*, redirectUri: *string* ) :** ***Promise\<[Token](#token)\>***
 
 **Parameters**
 
@@ -73,7 +79,9 @@ oauth.getCodeGrantAccessToken('<some retrieved code>', 'http://somehost.com')
     });
 ```
 
-#### #getCodeGrantAuthorizeUrl ( redirectUri: string, scope?: string, state?: string ) : Promise\<string\>
+### getCodeGrantAuthorizeUrl
+
+**#getCodeGrantAuthorizeUrl ( redirectUri: *string*, scope?: *string*, state?: *string* ) :** ***Promise\<string\>***
 
 Get the URL to send a client to to authorize the application to use the resource owner's information.
 
@@ -98,7 +106,9 @@ oauth.getCodeGrantAuthorizeUrl('http://somehost.com')
     });
 ```
 
-#### #refreshTokens ( accessToken: string, refreshToken: string ) : Promise\<[Token](#token)\>
+### refreshTokens
+
+**#refreshTokens ( accessToken: *string*, refreshToken: *string* ) :** ***Promise\<[Token](#token)\>***
 
 Get a new set of tokens, using both the access token and the refresh token.
 
@@ -122,7 +132,9 @@ oauth.refreshTokens('<access_token>', '<refresh_token>')
     });
 ```
 
-### #revokeTokens ( accessToken: string, refreshToken?: string ) : Promise\<void\>
+### revokeTokens
+
+**#revokeTokens ( accessToken: *string*, refreshToken?: *string* ) :** ***Promise\<void\>***
 
 Revoke tokens so that they are no longer usable.
 
