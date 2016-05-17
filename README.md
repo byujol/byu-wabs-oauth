@@ -24,11 +24,11 @@ Get an object with functions for getting, refreshing, revoking and verifying [Br
 
 **Returns** an object with the following functions:
 
-* [getClientGrantAccessToken](#getClientGrantAccessToken)
-* [getCodeGrantAccessToken](#getCodeGrantAccessToken)
-* [getCodeGrantAuthorizeUrl](#getCodeGrantAuthorizeUrl)
-* [refreshTokens](#refreshTokens)
-* [revokeTokens](#revokeTokens)
+* [getClientGrantAccessToken](#getclientgrantaccesstoken)
+* [getCodeGrantAccessToken](#getcdegrantaccesstoken)
+* [getCodeGrantAuthorizeUrl](#getcodegrantauthorizeurl)
+* [refreshTokens](#refreshtokens)
+* [revokeTokens](#revoketokens)
 
 ### getClientGrantAccessToken
 
