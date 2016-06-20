@@ -40,13 +40,15 @@ Get an object with functions for getting, refreshing, revoking and verifying [Br
 
 ### getClientGrantAccessToken
 
-**#getClientGrantAccessToken ( ) :** ***Promise\<[Token](#token)\>***
+**#getClientGrantAccessToken ( [ ignoreCache ] ) :** ***Promise\<[Token](#token)\>***
 
 Get a client grant access token. Client grant tokens only require the client's credentials (not the resource owner's) to get an access token.
 
+This function will return a cached access token unless the access token has expired or if the optional `ignoreCache` parameter is set to true.
+
 **Parameters**
 
-None
+* **ignoreCache** - Set this parameter to true to ignore the cached client grant access token. Defaults to `false`.
 
 **Returns**:
 
@@ -145,6 +147,8 @@ oauth.refreshTokens('<access_token>', '<refresh_token>')
 **#revokeTokens ( accessToken: *string*, refreshToken?: *string* ) :** ***Promise\<void\>***
 
 Revoke tokens so that they are no longer usable.
+
+If a client access token revoked and it has been cached then the cached client access token will also be removed.
 
 **Parameters**
 

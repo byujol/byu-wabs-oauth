@@ -8,7 +8,7 @@ import * as Promise from 'bluebird'
 module.exports = byuOauth;
 
 interface ByuOauthFactory {
-    getClientGrantAccessToken () : Promise<Token>;
+    getClientGrantAccessToken (ignoreCache?: boolean) : Promise<Token>;
     getCodeGrantAccessToken (code: string, redirectUri: string) : Promise<Token>;
     getCodeGrantAuthorizeUrl (redirectUri: string, scope?: string, state?: string) : Promise<string>;
     refreshTokens (accessToken: string, refreshToken: string) : Promise<Token>
@@ -25,12 +25,19 @@ interface Token {
 }
 
 function byuOauth (clientId: string, clientSecret: string, wellKnownUrl: string) : ByuOauthFactory {
+    var cachedClientToken = null;
+    var cachedClientTokenTimeoutId;
 
-    const getClientGrantAccessToken = Promise.coroutine(function *() {
-        const oauth2Handle = yield getOauth2Handle(clientId, clientSecret, wellKnownUrl);
-        const tokenConfig = {};
-        const clientToken = yield oauth2Handle.client.getToken(tokenConfig);
-        return processToken(wellKnownUrl, clientToken);
+    const getClientGrantAccessToken = Promise.coroutine(function *(ignoreCache) {
+        if (!cachedClientToken || ignoreCache) {
+            const oauth2Handle = yield getOauth2Handle(clientId, clientSecret, wellKnownUrl);
+            const tokenConfig = {};
+            const clientToken = yield oauth2Handle.client.getToken(tokenConfig);
+            cachedClientToken = yield processToken(wellKnownUrl, clientToken);
+            clearTimeout(cachedClientTokenTimeoutId);
+            cachedClientTokenTimeoutId = setTimeout(() => cachedClientToken = null, (clientToken.expires_in + 1) * 1000);
+        }
+        return Promise.resolve(cachedClientToken);
     });
 
     const getCodeGrantAccessToken = Promise.coroutine(function *(code, redirectUri) {
@@ -92,11 +99,15 @@ function byuOauth (clientId: string, clientSecret: string, wellKnownUrl: string)
         });
         yield accessToken.revoke('access_token');
         if (refresh_token) yield accessToken.revoke('refresh_token');
+        if (cachedClientToken && cachedClientToken.accessToken === access_token) {
+            clearTimeout(cachedClientTokenTimeoutId);
+            cachedClientToken = null;
+        }
         return Promise.resolve();
     });
 
     return {
-        getClientGrantAccessToken: () => getClientGrantAccessToken(),
+        getClientGrantAccessToken: (ignoreCache) => getClientGrantAccessToken(ignoreCache),
         getCodeGrantAccessToken: (code, redirectUri) => getCodeGrantAccessToken(code, redirectUri),
         getCodeGrantAuthorizeUrl: (redirectUri, scope, state) => getCodeGrantAuthorizeUrl(redirectUri, scope, state),
         refreshTokens: (accessToken, refreshToken) => refreshTokens(accessToken, refreshToken),
