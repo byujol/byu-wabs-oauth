@@ -15,8 +15,8 @@ ddd:
   ubiquitous_language_url: 
   context_map_url: 
 links:
-  system_documentation_url: https://github.com/byu-oit-appdev/byu-wabs-oauth
-  source_repo_url: https://github.com/byu-oit-appdev/byu-wabs-oauth
+  system_documentation_url: https://github.com/byu-oit/byu-wabs-oauth
+  source_repo_url: https://github.com/byu-oit/byu-wabs-oauth
   swagger_urls:
 microservice: False
 technologies_used:
@@ -49,5 +49,5 @@ tags:
   env: prd
   app: byu-wabs-oauth
   team: gro:AD-Academic Information Management
-federation_json_url: https://raw.githubusercontent.com/byu-oit-appdev/byu-wabs-oauth/master/.repo-meta.yml
+federation_json_url: https://raw.githubusercontent.com/byu-oit/byu-wabs-oauth/master/.repo-meta.yml
 
