@@ -1,4 +1,4 @@
-$schemaver: '2.0'
+$schemaver: 2.1
 repo_url: https://github.com/byu-oit/byu-wabs-oauth
 software:
   - name: byu-wabs-oauth
@@ -46,7 +46,4 @@ software:
             virtual_server:
             rack_server:
             blade_server:
-    tags:
-      data-sensitivity: confidential
-      app: byu-wabs-oauth
-      team: gro:AD-Academic Information Management
+    data_sensitivity: confidential
