@@ -1,1 +1,1 @@
-module.exports = require('./bin/byu-wabs-oauth');
+module.exports = require('./src')
