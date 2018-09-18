@@ -6,33 +6,34 @@
   "directories": {
     "test": "tests"
   },
+  "typings": "index.d.ts",
   "dependencies": {
-    "bluebird": "^3.3.5",
-    "byu-jwt": "0.0.9",
-    "express": "^4.13.4",
-    "oauth": "^0.9.14",
-    "prompt": "^1.0.0",
-    "request": "^2.69.0",
-    "request-promise": "^3.0.0",
-    "simple-oauth2": "^0.7.0"
+    "@types/node": "^10.10.1",
+    "@types/simple-oauth2": "^2.2.0",
+    "byu-jwt": " ^1.0.5",
+    "debug": "^4.0.1",
+    "simple-oauth2": "^2.2.1"
   },
   "devDependencies": {
+    "aws-sdk": "^2.315.0",
     "chai": "^3.5.0",
-    "mocha": "^2.4.5",
-    "phantom": "^2.1.1",
-    "phantomjs-prebuilt": "^2.1.7"
+    "mocha": "^5.2.0",
+    "puppeteer": "^1.8.0"
+  },
+  "engines": {
+    "node": ">=7.6.0"
   },
   "scripts": {
     "test": "mocha tests/*.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/byu-oit-appdev/byu-wabs-oauth.git"
+    "url": "git+https://github.com/byu-oit/byu-wabs-oauth.git"
   },
   "author": "",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/byu-oit-appdev/byu-wabs-oauth/issues"
+    "url": "https://github.com/byu-oit/byu-wabs-oauth/issues"
   },
-  "homepage": "https://github.com/byu-oit-appdev/byu-wabs-oauth#readme"
+  "homepage": "https://github.com/byu-oit/byu-wabs-oauth#readme"
 }
