@@ -34,6 +34,21 @@ function byuOauth(clientId, clientSecret) {
             return res;
         });
     }
+    function createToken(expiresAt, accessToken, refreshToken) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const options = { access_token: accessToken, expires_in: +expiresAt - Date.now() };
+            if (refreshToken)
+                options.refresh_token = refreshToken;
+            const oauth = yield getOauth(clientId, clientSecret);
+            const token = oauth.accessToken.create(options);
+            function refresh() {
+                if (refreshToken)
+                    return token.refresh({});
+                throw Error('Unable to refresh token');
+            }
+            return processToken(token, refresh, refreshToken ? token.token.refresh_token : undefined);
+        });
+    }
     function getAuthorizationUrl(redirectUri, scope, state) {
         return __awaiter(this, void 0, void 0, function* () {
             debug('get authorization url');
@@ -81,11 +96,12 @@ function byuOauth(clientId, clientSecret) {
             };
             const result = yield oauth.authorizationCode.getToken(config);
             const token = oauth.accessToken.create(result);
-            return processToken(token, () => token.refresh({}), token.token.refreshToken);
+            return processToken(token, () => token.refresh({}), token.token.refresh_token);
         });
     }
     return {
         authorizedRequest,
+        createToken,
         getAuthorizationUrl,
         getClientGrantToken,
         getCodeGrantToken,

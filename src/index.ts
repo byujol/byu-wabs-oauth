@@ -30,6 +30,18 @@ function byuOauth (clientId: string, clientSecret: string): ByuOAuth {
         return res
     }
 
+    async function createToken (expiresAt: Date, accessToken: string, refreshToken?: string): Promise<ByuToken> {
+        const options: {[k: string]: any} = { access_token: accessToken, expires_in: +expiresAt - Date.now() }
+        if (refreshToken) options.refresh_token = refreshToken
+        const oauth = await getOauth(clientId, clientSecret)
+        const token = oauth.accessToken.create(options)
+        function refresh() {
+            if (refreshToken) return token.refresh({})
+            throw Error('Unable to refresh token')
+        }
+        return processToken(token, refresh, refreshToken ? token.token.refresh_token : undefined)
+    }
+
     async function getAuthorizationUrl (redirectUri: string, scope?: string, state?: string): Promise<string> {
         debug('get authorization url')
         const oauth = await getOauth(clientId, clientSecret)
@@ -70,11 +82,12 @@ function byuOauth (clientId: string, clientSecret: string): ByuOAuth {
         }
         const result = await oauth.authorizationCode.getToken(config)
         const token = oauth.accessToken.create(result)
-        return processToken(token, () => token.refresh({}), token.token.refreshToken)
+        return processToken(token, () => token.refresh({}), token.token.refresh_token)
     }
 
     return {
         authorizedRequest,
+        createToken,
         getAuthorizationUrl,
         getClientGrantToken,
         getCodeGrantToken,

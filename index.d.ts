@@ -6,6 +6,7 @@ declare namespace byuOAuth {
 
     export interface ByuOAuth {
         authorizedRequest (options: RequestWithTokenOptions): Promise<ResponseObject>,
+        createToken (expiresAt: Date, accessToken: string, refreshToken?: string): Promise<ByuToken>,
         getAuthorizationUrl (redirectUri: string, scope?: string, state?: string): Promise<string>,
         getClientGrantToken (): Promise<ByuToken>,
         getCodeGrantToken (code: string, redirectUri: string, scope?: string): Promise<ByuToken>,

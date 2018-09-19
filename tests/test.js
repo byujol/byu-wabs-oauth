@@ -44,6 +44,12 @@ describe('byu-wabs-oauth', function() {
     })
   })
 
+  after(() => {
+    setTimeout(() => {
+      process.exit(0)
+    }, 500)
+  })
+
   describe('authorizedRequest', () => {
 
     it('will add bearer token to request', async () => {
@@ -63,6 +69,23 @@ describe('byu-wabs-oauth', function() {
         token
       })
       expect(res.statusCode).to.equal(200)
+    })
+
+  })
+
+  describe('createToken', () => {
+
+    it('can create token', async () => {
+      const token = await oauth.getClientGrantToken()
+      const token2 = await oauth.createToken(token.expiresAt, token.accessToken, token.refreshToken)
+      expect(token2.revoke).to.be.a('function')
+    })
+
+    it('can revoke the token', async () => {
+      const token = await oauth.getClientGrantToken()
+      const token2 = await oauth.createToken(token.expiresAt, token.accessToken, token.refreshToken)
+      await token2.revoke()
+      expect(token2.accessToken).to.equal(undefined)
     })
 
   })
