@@ -5,7 +5,7 @@ declare function byuOAuth (clientId: string, clientSecret: string): byuOAuth.Byu
 declare namespace byuOAuth {
 
     export interface ByuOAuth {
-        authorizedRequest (options: RequestWithTokenOptions): Promise<ResponseObject>,
+        authorizedRequest (options: { body?: object|string, headers?: {[k: string]: string}, method?: string, query?: object, token?: ByuToken, url: string }): Promise<{body: string|object|void, headers: object, statusCode: number}>,
         getAuthorizationUrl (redirectUri: string, scope?: string, state?: string): Promise<string>,
         getClientGrantToken (): Promise<ByuToken>,
         getCodeGrantToken (code: string, redirectUri: string, scope?: string): Promise<ByuToken>,
@@ -36,28 +36,5 @@ declare namespace byuOAuth {
         subjectTypesSupported: Array<string>,
         tokenEndpoint: string,
         userInfoEndpoint: string
-    }
-
-    interface RequestOptions {
-        body?: object|string,
-        headers?: {[k: string]: string},
-        method?: string,
-        query?: object,
-        url: string
-    }
-
-    interface RequestWithTokenOptions {
-        body?: object|string,
-        headers?: {[k: string]: string},
-        method?: string,
-        query?: object,
-        token?: ByuToken,
-        url: string
-    }
-
-    interface ResponseObject {
-        body: string|object|void,
-        headers: object,
-        statusCode: number
     }
 }
