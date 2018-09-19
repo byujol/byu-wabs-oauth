@@ -1,6 +1,13 @@
 # byu-wabs-oauth
 
-This library provides some functions that will simplify the process of getting, refreshing, revoking, and verifying [Brigham Young University](http://www.byu.edu)'s OAuth tokens.
+Manage OAuth access tokens for BYU's implementation of WSO2.
+
+## Features
+
+- Get client grant access tokens
+- Get code grant access tokens
+- Make authenticated requests with automatic retry
+- Get OpenID information
 
 ## Installation
 
@@ -16,27 +23,149 @@ Alternatively if you'd like to install with testing libraries:
 $ npm install byu-wabs-oauth
 ```
 
+## Examples
+
+### Client Grant Token
+
+Use this grant type for communicating from one server to another where a specific user’s permission to access data is not required.
+
+```js
+const byuOAuth = require('byu-wabs-oauth')
+const oauth = await byuOauth('<client_id>', '<client_secret>')
+const token = await oauth.getClientGrantToken()
+```
+
+### Code Grant Token
+
+Use this grant type if you need the user's authorization to access data. Getting this grant type is a two step process.
+
+1. Direct the user to the authorization URL
+2. Get the token using the authorization code that comes in a follow up request
+
+```js
+;(async () => {
+    const byuOAuth = require('byu-wabs-oauth')
+    const redirectUrl = 'http://localhost:3000/'
+
+    // get BYU OAuth instance
+    const oauth = await byuOauth('<client_id>', '<client_secret>')
+
+    // start a server that will listen for the OAuth code grant redirect
+    const server = http.createServer(async (req, res) => {
+        const code = req.url.startsWith('/code=')
+            ? req.url.substr(6)
+            : null
+
+        // if there is no code then redirect browser to authorization url
+        if (!code) {
+            const url = await oauth.getAuthorizationUrl(redirectUrl)
+            res.setHeader('Location', url)
+            res.end()
+
+        // if there is a code then use the code to get the code grant token
+        } else {
+            const token = await oauth.getCodeGrantToken(code, redirectUrl)
+            res.write(token.accessToken)
+            res.end()
+        }
+    });
+
+    const listener = server.listen(3000)
+})()
+```
+
+### Authorized Request
+
+Make an HTTP/HTTPS request with the authorization header automatically set. If the first request fails due to an invalid token then a fresh token will be acquired and the request will be attempted a second time. This will work for either client grant or code grant tokens.
+
+**Client grant token example**
+
+```js
+;(async () => {
+    const byuOAuth = require('byu-wabs-oauth')
+    const oauth = await byuOauth('<client_id>', '<client_secret>')
+
+    // make a GET request to the specified URL using client grant
+    const response = oauth.authorizedRequest({ url: 'https://api.byu.edu/something' })
+})()
+```
+
+**Code grant token example**
+
+```js
+;(async () => {
+    const byuOAuth = require('byu-wabs-oauth')
+    const redirectUrl = 'http://localhost:3000/'
+
+    // get BYU OAuth instance
+    const oauth = await byuOauth('<client_id>', '<client_secret>')
+
+    // start a server that will listen for the OAuth code grant redirect
+    const server = http.createServer(async (req, res) => {
+        const code = req.url.startsWith('/code=')
+            ? req.url.substr(6)
+            : null
+
+        // if there is no code then redirect browser to authorization url
+        if (!code) {
+            const url = await oauth.getAuthorizationUrl(redirectUrl)
+            res.setHeader('Location', url)
+            res.end()
+
+        // if there is a code then use the code to get the code grant token
+        } else {
+            const token = await oauth.getCodeGrantToken(code, redirectUrl)
+
+            // make the autorized request with the specified token
+            const response = oauth.authorizedRequest({
+                token,
+                url: 'https://api.byu.edu/something'
+            })
+
+            res.write(response.body)
+            res.end()
+        }
+    });
+
+    const listener = server.listen(3000)
+})()
+```
+
 ## API
 
 ### byuWabsOauth
 
-**byuWabsOauth ( clientId: *string*, clientSecret: *string*, wellKnownUrl: *string* ) :** ***Object***
+**byuWabsOauth ( clientId: *string*, clientSecret: *string* ): *Promise<[ByuOAuth](#byuoauth)>***
 
-Get an object with functions for getting, refreshing, revoking and verifying [Brigham Young University](http://www.byu.edu)'s OAuth tokens.
+Create a [ByuOAuth](#byuoauth) object.
 
 **Parameters**
 
-* **clientId** - The client ID (a.k.a. consumer key).
-* **clientSecret** - The client secret (a.k.a. consumer secret).
-* **wellKnownUrl** - The URL to query for WSO2 endpoints.
+- *clientId* - The client ID or consumer key
+- *clientSecret* - The client secret or consumer secret
 
-**Returns** an object with the following functions:
+**Returns** a [ByuOAuth](#byuoauth) object.
 
-* [getClientGrantAccessToken](#getclientgrantaccesstoken)
-* [getCodeGrantAccessToken](#getcodegrantaccesstoken)
-* [getCodeGrantAuthorizeUrl](#getcodegrantauthorizeurl)
-* [refreshTokens](#refreshtokens)
-* [revokeTokens](#revoketokens)
+**Example**
+
+```js
+const byuOAuth = require('byu-wabs-oauth')
+const oauth = await byuOauth('<client_id>', '<client_secret>')
+```
+
+### #authorizedRequest
+
+**authorizedRequest ( options: *object* ): *Promise<
+
+**Parameters**
+
+- *options*
+    - *body* (string|object) - The body to send with the request
+    - *headers*
+
+Make an HTTP or HTTPS request with the authorization header automatically set and managed. If the token provided is invalid then the request will get a new token and attempt the request again.
+
+
 
 ### getClientGrantAccessToken
 
