@@ -51,7 +51,7 @@ declare namespace byuOAuth {
         headers?: {[k: string]: string},
         method?: string,
         query?: object,
-        token: ByuToken,
+        token?: ByuToken,
         url: string
     }
 
