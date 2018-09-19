@@ -9,6 +9,26 @@ Manage OAuth access tokens for BYU's implementation of WSO2.
 - Make authenticated requests with automatic retry
 - Get OpenID information
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Examples](#examples)
+    - [Client Grant Token](#client-grant-token)
+    - [Code Grant Token](#code-grant-token)
+    - [Authorized Request](#authorized-request)
+    - [Refresh Tokens](#refresh-tokens)
+    - [Revoke Tokens](#revoke-tokens)
+- [Create a BYU OAuth object](#create-a-byu-oauth-object)
+- [BYU OAuth Object](#byu-oauth-object)
+    - [authorizedRequest](#authorizedRequest)
+    - [getAuthorizationUrl](#getauthorizationurl)
+    - [getClientGrantToken](#getclientgranttoken)
+    - [getCodeGrantToken](#getcodegranttoken)
+    - [getOpenId](#getopenid)
+- [BYU OAuth Token](#byu-oauth-token)
+- [Testing](#testing)
+
+
 ## Installation
 
 If you don't want to install all of the testing baggage (which there is a lot of) you'll want to do a production installation:
@@ -131,20 +151,40 @@ Make an HTTP/HTTPS request with the authorization header automatically set. If t
 })()
 ```
 
-## API
+### Refresh Tokens
 
-### byuWabsOauth
+This operation can be performed on tokens that were generated as either client grant or code grant tokens. For simplicity the client grant token is used in the example.
 
-**byuWabsOauth ( clientId: *string*, clientSecret: *string* ): *Promise<[ByuOAuth](#byuoauth)>***
+```js
+const byuOAuth = require('byu-wabs-oauth')
+const oauth = await byuOauth('<client_id>', '<client_secret>')
+const token = await oauth.getClientGrantToken()
 
-Create a [ByuOAuth](#byuoauth) object.
+await token.refresh()
+```
+
+### Revoke Tokens
+
+This operation can be performed on tokens that were generated as either client grant or code grant tokens. For simplicity the client grant token is used in the example.
+
+```js
+const byuOAuth = require('byu-wabs-oauth')
+const oauth = await byuOauth('<client_id>', '<client_secret>')
+const token = await oauth.getClientGrantToken()
+
+await token.revoke()
+```
+
+## Create a BYU OAuth object
 
 **Parameters**
 
-- *clientId* - The client ID or consumer key
-- *clientSecret* - The client secret or consumer secret
+| Parameter | Type | Required | Default | Description |
+| --------- | ---- | -------- | ------- | ----------- |
+| **clientId** | `string` | Yes | N/A | The client ID or consumer key |
+| **clientSecret** | `string` | Yes | N/A | The client secret or consumer secret |
 
-**Returns** a [ByuOAuth](#byuoauth) object.
+**Returns** a Promise that resolves to a [BYU OAuth object](#byu-oauth-object).
 
 **Example**
 
@@ -153,174 +193,170 @@ const byuOAuth = require('byu-wabs-oauth')
 const oauth = await byuOauth('<client_id>', '<client_secret>')
 ```
 
-### #authorizedRequest
+## BYU OAuth Object
 
-**authorizedRequest ( options: *object* ): *Promise<
+This object is created when you [call the module function](#create-a-byu-oauth-object). It has the following properties:
 
-**Parameters**
+- [authorizedRequest](#authorizedrequest) - Used for making HTTP/S requests with an authorization token. Includes auto token refresh when stale.
+- [getAuthorizationUrl](#getauthorizationurl) - Get the URL that will provide an OAuth code grant code.
+- [getClientGrantToken](#getclientgranttoken) - Get a client grant [token](#byu-oauth-token). Use this grant type for communicating from one server to another where a specific user’s permission to access data is not required.
+- [getCodeGrantToken](#getcodegranttoken) - Get a code grant [token](#byu-oauth-token). Use this grant type if you need the user's authorization to access data.
+- [getOpenId](#getopenid) - Get the OpenID object.
 
-- *options*
-    - *body* (string|object) - The body to send with the request
-    - *headers*
+### authorizedRequest
 
-Make an HTTP or HTTPS request with the authorization header automatically set and managed. If the token provided is invalid then the request will get a new token and attempt the request again.
+`authorizedRequest ( options: object ): Promise<object>`
 
-
-
-### getClientGrantAccessToken
-
-**#getClientGrantAccessToken ( [ ignoreCache ] ) :** ***Promise\<[Token](#token)\>***
-
-Get a client grant access token. Client grant tokens only require the client's credentials (not the resource owner's) to get an access token.
-
-This function will return a cached access token unless the access token has expired or if the optional `ignoreCache` parameter is set to true.
+Make an HTTP/S request. The authorization header will automatically be set based on the token provided. If the token is invalid then the request will get a new token and attempt the request again.
 
 **Parameters**
 
-* **ignoreCache** - Set this parameter to true to ignore the cached client grant access token. Defaults to `false`.
+| Parameter | Type | Required | Default | Description |
+| --------- | ---- | -------- | ------- | ----------- |
+| options | `object` | Yes | N/A | The [request options](#request-options). |
 
-**Returns**:
+#### Request Options
 
-A Promise that resolves to a [Token](#token) object.
+| Parameter | Type | Required | Default | Description |
+| --------- | ---- | -------- | ------- | ----------- |
+| body | `string` or `object` | No | N/A | The body to send with the request. |
+| headers | `Object<string, string>` | No | `{}` | An object with keys as header names and values as header values. |
+| method | `string` | No | `"GET"` | The HTTP method to use |
+| query | `Object<string, string|string[]>` | No | `{}` | An object with keys as query parameter names and values as query parameter values. If the value is an array of strings then the query parameter will be set multiple times. If the `url` option also has query parameters then this will be appended to existing options.
+| token | [Token](#byu-oauth-token) | No | [getClientGrantAccessToken](#getclientgrantaccesstoken) | The token to use to make the request.
+| **url** | `string` | Yes | N/A | The URL to call, including protocol. For example: `https://api.byu.edu/some/path` |
+
+**Returns** a Promise that resolves to an object with the following properties:
+
+- body - May be undefined, a string, or an object
+- headers - An object
+- statusCode - A number
 
 **Example**
 
 ```js
-const byuOauth = require('byu-wabs-oauth');
-const oauth = byuOauth('<client_id>', '<client_secret>', 'http://well-known-url.com');
-oauth.getClientGrantAccessToken()
-    .then(function(token) {
-        console.log('Access token: ' + token.accessToken);
-    });
+;(async () => {
+    const byuOAuth = require('byu-wabs-oauth')
+    const oauth = await byuOauth('<client_id>', '<client_secret>')
+
+    // make a GET request to the specified URL using client grant
+    const response = await oauth.authorizedRequest({ url: 'https://api.byu.edu/something' })
+})()
 ```
 
-### getCodeGrantAccessToken
+### getAuthorizationUrl
 
-**#getCodeGrantAccessToken ( code: *string*, redirectUri: *string* ) :** ***Promise\<[Token](#token)\>***
+`getAuthorizationUrl ( redirectUri: string, scope?: string, state?: string ): Promise<string>`
+
+Get the URL that needs to be visited to acquire a code grant code.
 
 **Parameters**
 
-* **code** - The grant code supplied by the authorize url.
-* **redirectUri** - The URI to redirect the client to once the token has been acquired.
+| Parameter | Type | Required | Default | Description |
+| --------- | ---- | -------- | ------- | ----------- |
+| *redirectUri* | `string` | Yes | N/A | The URL that the API manager will redirect to after the user has authorized the application. |
+| scope | `string` | No | `''` | The OAuth2 scopes to ask permission for. Each scope should be seperated by a space. |
 
-**Returns**
-
-A Promise that resolves to a [Token](#token) object.
+**Returns** a Promise that resolves to the URL.
 
 **Example**
 
 ```js
-const byuOauth = require('byu-wabs-oauth');
-const oauth = byuOauth('<client_id>', '<client_secret>', 'http://well-known-url.com');
-oauth.getCodeGrantAccessToken('<some retrieved code>', 'http://somehost.com')
-    .then(function(token) {
-        console.log('Access token: ' + token.accessToken);
-    });
+;(async () => {
+    const byuOAuth = require('byu-wabs-oauth')
+    const oauth = await byuOauth('<client_id>', '<client_secret>')
+
+    const url = await oauth.getAuthorizationUrl('https://my-server.com', 'scope1 scope2', 'state info')
+})()
 ```
 
-### getCodeGrantAuthorizeUrl
+### getClientGrantToken
 
-**#getCodeGrantAuthorizeUrl ( redirectUri: *string*, scope?: *string*, state?: *string* ) :** ***Promise\<string\>***
+`getClientGrantToken (): Promise<Token>`
 
-Get the URL to send a client to to authorize the application to use the resource owner's information.
+Get a client grant [token](#byu-oauth-token).
 
 **Parameters**
 
-* **redirectUri** - The URI to redirect the client to once that code has been acquired.
-* **scope** - *Optional* - The scope to authorize the application for.
-* **state** - *Optional* - A string representing state information for the application.
+None
 
-**Returns**
-
-A Promise that resolves to a string representing the authorization URL.
+**Returns** a Promise that resolves to a [token](#byu-oauth-token).
 
 **Example**
 
 ```js
-const byuOauth = require('byu-wabs-oauth');
-const oauth = byuOauth('<client_id>', '<client_secret>', 'http://well-known-url.com');
-oauth.getCodeGrantAuthorizeUrl('http://somehost.com')
-    .then(function(url) {
-        console.log('URL: ' + url);
-    });
+;(async () => {
+    const byuOAuth = require('byu-wabs-oauth')
+    const oauth = await byuOauth('<client_id>', '<client_secret>')
+
+    const token = await oauth.getClientGrantToken()
+})()
 ```
 
-### refreshTokens
+### getCodeGrantToken
 
-**#refreshTokens ( accessToken: *string*, refreshToken: *string* ) :** ***Promise\<[Token](#token)\>***
+`getCodeGrantToken ( code: string, redirectUri: string, scope?: string): Promise<Token>`
 
-Get a new set of tokens, using both the access token and the refresh token.
+Get a code grant [token](#byu-oauth-token).
 
 **Parameters**
 
-* **accessToken** - The old access token.
-* **refreshToken** - The old refresh token.
+| Parameter | Type | Required | Default | Description |
+| --------- | ---- | -------- | ------- | ----------- |
+| *code* | `string` | Yes | N/A | The code grant code that signifies authorization |
+| *redirectUri* | `string` | Yes | N/A | The OAuth2 scopes to ask permission for. Each scope should be seperated by a space. |
+| scope | `string` | No | `''` | The OAuth2 scopes to ask permission for. Each scope should be seperated by a space. These scopes can be the same as those used in the [authorization URL](#getauthorizationurl) or they can be a lesser set. |
 
-**Returns**
-
-A Promise that resolves to a [Token](#token) object.
+**Returns** a Promise that resolves to a [token](#byu-oauth-token).
 
 **Example**
 
-```js
-const byuOauth = require('byu-wabs-oauth');
-const oauth = byuOauth('<client_id>', '<client_secret>', 'http://well-known-url.com');
-oauth.refreshTokens('<access_token>', '<refresh_token>')
-    .then(function(token) {
-        console.log('Access token: ' + token.accessToken);
-    });
-```
+See the [Code Grant Token example](#code-grant-token).
 
-### revokeTokens
+### getOpenId
 
-**#revokeTokens ( accessToken: *string*, refreshToken?: *string* ) :** ***Promise\<void\>***
+`getOpenId ( ignoreCache?: boolean ): Promise<object>`
 
-Revoke tokens so that they are no longer usable.
-
-If a client access token revoked and it has been cached then the cached client access token will also be removed.
+Get the latest OpenID information. This value changes so rarely that it may never change, therefor it is safe to cache this value and a cache time of 10 minutes has been set internally. This method is used by all other [BYU OAuth Object](#byu-oauth-object) properties, so if nothing is working then just maybe the OpenID information has changed and you can either wait up to 10 minutes for it to fix, or you can call this function with the `ignoreCache` parameter set to `true` and that will cause an update.
 
 **Parameters**
 
-* **accessToken** - The old access token.
-* **refreshToken** - *Optional* - The old refresh token.
+| Parameter | Type | Required | Default | Description |
+| --------- | ---- | -------- | ------- | ----------- |
+| ignoreCache | `boolean` | No | `false` | Whether to ignore cached OpenID object value. |
 
-**Returns**
+**Returns** a Promise that resolves to an object with the following properties:
 
-A Promise that resolves to `undefined`.
+- authorizationEndpoint - A string
+- idTokenSigningAlgorithmValuesSupported - An array of strings
+- issuer - A string
+- jwksUri - A string
+- responseTypesSupported - An array of strings
+- revocationEndpoint - A string
+- scopesSupported - An array of strings
+- subjectTypesSupported - An array of strings
+- tokenEndpoint - A string
+- userInfoEndpoint - A string
 
-**Example**
+## BYU OAuth Token
 
-```js
-const byuOauth = require('byu-wabs-oauth');
-const oauth = byuOauth('<client_id>', '<client_secret>', 'http://well-known-url.com');
-oauth.revokeTokens('<access_token>', '<refresh_token>')
-    .then(function(token) {
-        console.log('Tokens revoked');
-    });
-```
+This object has information about the current token as well as methods for managing the token. These are the properties:
 
-## Token
-
-A token object has the following structure:
-
-```js
-{
-    accessToken: string,
-    expiresIn: number,
-    openId: [string, void],             // string or undefined
-    refreshToken: [string, void],       // string or undefined
-    scope: string,
-    tokenType: string
-}
-```
+- accessToken - A string that has the most recent access token. This value will be `undefined` if the token has been revoked.
+- expired - A boolean that indicates if the token has expired.
+- expiresAt - A Date object that represents when the token will expire.
+- expiresIn - The number of milliseconds until the token expires.
+- jwt - The JWT that represents this access token.
+- refresh() - A function for refresing the token. See the [Refresh Tokens](#refresh-tokens) example.
+- refreshToken - A string representing the refresh token. This value will be `undefined` for client grant tokens, although client grant tokens can still be refreshed using the `refresh` function on this object.
+- revoke() - A function to revoke the current access token and refresh token. See the [Revoke Tokens](#revoke-tokens) example.
+- scope - A string representing the scopes associated with this token.
+- type - A string of the token type.
 
 ## Testing
 
-To run tests you need to first set up a client ID and client secret. Once done then you can run tests on this library by running the following command:
-
-```sh
-$ npm test -- --client-id=<client_id> --client-secret=<client_secret> --well-known-url=<well_known_url> --redirect-uri=<redirect_uri> --net-id=<net_id> --password=<password>
-```
-
-Note that if the net id used requires dual authentication that the tests will not pass.
-Tests may take a while to run, so you may need to specify the mocha `--timeout` option in the test command.
+1. Open a terminal and log into AWS using [awslogin](https://github.com/byu-oit/awslogin).
+2. Select the `dev-oit-byu` account.
+3. Change the directory to this project's directory.
+4. Run: `npm install`
+5. Run: `npm test`
