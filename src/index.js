@@ -20,6 +20,8 @@ function byuOauth(clientId, clientSecret) {
             options = Object.assign({}, options);
             options.headers = options.headers ? Object.assign({}, options.headers) : {};
             options.headers = lowerCaseHeaders(options.headers);
+            if (!options.token)
+                options.token = yield getClientGrantToken();
             if (!options.headers.authorization)
                 options.headers.authorization = 'Bearer ' + options.token.accessToken;
             let res = yield request(options);
