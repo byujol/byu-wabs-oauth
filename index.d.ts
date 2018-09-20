@@ -7,10 +7,12 @@ declare namespace byuOAuth {
     export interface ByuOAuth {
         authorizedRequest (options: RequestWithTokenOptions): Promise<ResponseObject>,
         createToken (expiresAt: Date, accessToken: string, refreshToken?: string): Promise<ByuToken>,
-        getAuthorizationUrl (redirectUri: string, scope?: string, state?: string): Promise<string>,
+        getAuthorizationUrl (redirectUri: string, state?: string): Promise<string>,
         getClientGrantToken (): Promise<ByuToken>,
-        getCodeGrantToken (code: string, redirectUri: string, scope?: string): Promise<ByuToken>,
-        getOpenId (ignoreCache?: boolean): Promise<ByuOpenId>
+        getCodeGrantToken (code: string, redirectUri: string): Promise<ByuToken>,
+        getOpenId (ignoreCache?: boolean): Promise<ByuOpenId>,
+        refreshToken (accessToken: string, refreshToken: string) : Promise<ByuToken>,
+        revokeToken (accessToken: string, refreshToken?: string) : Promise<ByuToken>
     }
 
     export interface ByuToken {
@@ -18,9 +20,9 @@ declare namespace byuOAuth {
         expired: boolean,
         expiresAt: Date,
         expiresIn: number,
-        jwt: string|void,
+        resourceOwner?: ResourceOwner|void,
         refresh (): Promise<ByuToken>,
-        refreshToken: string|void,
+        refreshToken?: string|void,
         revoke (): Promise<ByuToken>,
         scope: string,
         type: string
@@ -37,6 +39,28 @@ declare namespace byuOAuth {
         subjectTypesSupported: Array<string>,
         tokenEndpoint: string,
         userInfoEndpoint: string
+    }
+
+    export interface ResourceOwner {
+        atHash: string,
+        aud: Array<string>,
+        authTime: number,
+        azp: string,
+        byuId: string,
+        exp: number,
+        iat: number,
+        iss: string,
+        jwt: string,
+        netId: string,
+        personId: string,
+        preferredFirstName: string,
+        prefix: string,
+        restOfName: string,
+        sortName: string,
+        sub: string,
+        suffix: string,
+        surname: string,
+        surnamePosition: string
     }
 
     export interface RequestOptions {
