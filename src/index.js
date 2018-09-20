@@ -41,21 +41,22 @@ function byuOauth(clientId, clientSecret) {
                 options.refresh_token = refreshToken;
             const oauth = yield getOauth(clientId, clientSecret);
             const token = oauth.accessToken.create(options);
-            function refresh() {
+            return processToken(token, function refresh() {
                 if (refreshToken)
                     return token.refresh({});
                 throw Error('Unable to refresh token');
-            }
-            return processToken(token, refresh, refreshToken ? token.token.refresh_token : undefined);
+            });
         });
     }
-    function getAuthorizationUrl(redirectUri, scope, state) {
+    function getAuthorizationUrl(redirectUri, state) {
         return __awaiter(this, void 0, void 0, function* () {
             debug('get authorization url');
             const oauth = yield getOauth(clientId, clientSecret);
-            const config = { redirect_uri: redirectUri };
-            if (scope !== undefined)
-                config.scope = scope;
+            const config = {
+                redirect_uri: redirectUri,
+                scope: 'openid'
+            };
+            // if (scope !== undefined) config.scope = scope
             if (state !== undefined)
                 config.state = state;
             return oauth.authorizationCode.authorizeURL(config);
@@ -64,19 +65,15 @@ function byuOauth(clientId, clientSecret) {
     function getClientGrantToken() {
         return __awaiter(this, void 0, void 0, function* () {
             debug('get client grant token');
-            const openId = yield getOpenId();
             const oauth = yield getOauth(clientId, clientSecret);
-            const result = yield oauth.clientCredentials.getToken({
-                scope: openId.scopesSupported
-            });
+            const result = yield oauth.clientCredentials.getToken({});
             const rawToken = oauth.accessToken.create(result);
-            const token = yield processToken(rawToken, refresh, undefined);
+            const token = yield processToken(rawToken, refresh);
             function refresh() {
                 return __awaiter(this, void 0, void 0, function* () {
                     const newToken = yield getClientGrantToken();
                     token.accessToken = newToken.accessToken;
                     token.expiresAt = newToken.expiresAt;
-                    token.jwt = newToken.jwt;
                     token.scope = newToken.scope;
                     token.type = newToken.type;
                     return token;
@@ -85,18 +82,32 @@ function byuOauth(clientId, clientSecret) {
             return token;
         });
     }
-    function getCodeGrantToken(code, redirectUri, scope) {
+    function getCodeGrantToken(code, redirectUri) {
         return __awaiter(this, void 0, void 0, function* () {
             debug('get code grant token');
             const oauth = yield getOauth(clientId, clientSecret);
             const config = {
                 code: code,
                 redirect_uri: redirectUri,
-                scope: scope ? scope.split(/ +/) : []
+                scope: ['openid']
             };
             const result = yield oauth.authorizationCode.getToken(config);
             const token = oauth.accessToken.create(result);
-            return processToken(token, () => token.refresh({}), token.token.refresh_token);
+            return processToken(token, () => token.refresh({}));
+        });
+    }
+    function refreshToken(accessToken, refreshToken) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const token = yield createToken(new Date(), accessToken, refreshToken);
+            yield token.refresh();
+            return token;
+        });
+    }
+    function revokeToken(accessToken, refreshToken) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const token = yield createToken(new Date(), accessToken, refreshToken);
+            yield token.revoke();
+            return token;
         });
     }
     return {
@@ -105,7 +116,9 @@ function byuOauth(clientId, clientSecret) {
         getAuthorizationUrl,
         getClientGrantToken,
         getCodeGrantToken,
-        getOpenId
+        getOpenId,
+        refreshToken,
+        revokeToken
     };
 }
 function lowerCaseHeaders(headers) {
@@ -117,42 +130,66 @@ function lowerCaseHeaders(headers) {
     }
     return result;
 }
-function processToken(token, refresh, refreshToken) {
-    const protect = {
-        refreshing: undefined
-    };
-    const result = {
-        accessToken: token.token.access_token,
-        get expired() { return this.expiresAt < Date.now(); },
-        expiresAt: token.token.expires_at,
-        get expiresIn() { return this.expiresAt - Date.now(); },
-        jwt: token.token.id_token,
-        refresh: () => __awaiter(this, void 0, void 0, function* () {
-            if (protect.refreshing)
-                return protect.refreshing;
-            protect.refreshing = refresh();
-            const result = yield protect.refreshing;
-            protect.refreshing = undefined;
+function processToken(token, refresh) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const protect = {
+            refreshing: undefined
+        };
+        const result = {
+            accessToken: token.token.access_token,
+            get expired() { return this.expiresAt < Date.now(); },
+            expiresAt: token.token.expires_at,
+            get expiresIn() { return this.expiresAt - Date.now(); },
+            refresh: () => __awaiter(this, void 0, void 0, function* () {
+                if (protect.refreshing)
+                    return protect.refreshing;
+                protect.refreshing = refresh();
+                const result = yield protect.refreshing;
+                protect.refreshing = undefined;
+                return result;
+            }),
+            revoke: () => __awaiter(this, void 0, void 0, function* () {
+                token.revokeAll();
+                result.accessToken = undefined;
+                result.expiresAt = new Date();
+                if (result.hasOwnProperty('resourceOwner'))
+                    result.resourceOwner = undefined;
+                if (result.hasOwnProperty('refreshToken'))
+                    result.refreshToken = undefined;
+                return result;
+            }),
+            scope: token.token.scope,
+            type: token.token.token_type
+        };
+        if (token.token.refresh_token)
+            result.refreshToken = token.token.refresh_token;
+        const jwt = token.token.id_token;
+        if (!jwt)
             return result;
-        }),
-        refreshToken: refreshToken,
-        revoke: () => __awaiter(this, void 0, void 0, function* () {
-            token.revokeAll();
-            result.accessToken = undefined;
-            result.expiresAt = new Date();
-            result.jwt = undefined;
-            result.refreshToken = undefined;
-            return result;
-        }),
-        scope: token.token.scope,
-        type: token.token.token_type
-    };
-    if (!result.jwt)
-        return result;
-    return byuJwt.verifyJWT(result.jwt)
-        .then(function (verified) {
-        if (!verified)
+        const decoded = yield byuJwt.decodeJWT(jwt);
+        if (!decoded)
             throw Error('Access token failed verification');
+        result.resourceOwner = {
+            atHash: decoded.raw.at_hash,
+            aud: decoded.raw.aud,
+            authTime: decoded.raw.auth_time,
+            azp: decoded.raw.azp,
+            byuId: decoded.raw.byu_id,
+            exp: decoded.raw.exp,
+            iat: decoded.raw.iat,
+            iss: decoded.raw.iss,
+            jwt,
+            netId: decoded.raw.net_id,
+            personId: decoded.raw.person_id,
+            preferredFirstName: decoded.raw.preferred_first_name,
+            prefix: decoded.raw.prefix,
+            restOfName: decoded.raw.rest_of_name,
+            sortName: decoded.raw.sort_name,
+            sub: decoded.raw.sub,
+            suffix: decoded.raw.suffix,
+            surname: decoded.raw.surname,
+            surnamePosition: decoded.raw.surname_position
+        };
         return result;
     });
 }

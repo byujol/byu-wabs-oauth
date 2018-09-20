@@ -35,36 +35,34 @@ function byuOauth (clientId: string, clientSecret: string): ByuOAuth {
         if (refreshToken) options.refresh_token = refreshToken
         const oauth = await getOauth(clientId, clientSecret)
         const token = oauth.accessToken.create(options)
-        function refresh() {
+        return processToken(token, function refresh() {
             if (refreshToken) return token.refresh({})
             throw Error('Unable to refresh token')
-        }
-        return processToken(token, refresh, refreshToken ? token.token.refresh_token : undefined)
+        })
     }
 
-    async function getAuthorizationUrl (redirectUri: string, scope?: string, state?: string): Promise<string> {
+    async function getAuthorizationUrl (redirectUri: string, state?: string): Promise<string> {
         debug('get authorization url')
         const oauth = await getOauth(clientId, clientSecret)
-        const config: {[k: string]: any} = { redirect_uri: redirectUri }
-        if (scope !== undefined) config.scope = scope
+        const config: {[k: string]: any} = {
+            redirect_uri: redirectUri,
+            scope: 'openid'
+        }
+        // if (scope !== undefined) config.scope = scope
         if (state !== undefined) config.state = state
         return oauth.authorizationCode.authorizeURL(config)
     }
 
     async function getClientGrantToken (): Promise<ByuToken> {
         debug('get client grant token')
-        const openId = await getOpenId()
         const oauth = await getOauth(clientId, clientSecret)
-        const result = await oauth.clientCredentials.getToken({
-            scope: openId.scopesSupported
-        })
+        const result = await oauth.clientCredentials.getToken({})
         const rawToken = oauth.accessToken.create(result)
-        const token = await processToken(rawToken, refresh, undefined)
+        const token = await processToken(rawToken, refresh)
         async function refresh() {
             const newToken = await getClientGrantToken()
             token.accessToken = newToken.accessToken
             token.expiresAt = newToken.expiresAt
-            token.jwt = newToken.jwt
             token.scope = newToken.scope
             token.type = newToken.type
             return token
@@ -72,17 +70,29 @@ function byuOauth (clientId: string, clientSecret: string): ByuOAuth {
         return token
     }
 
-    async function getCodeGrantToken (code: string, redirectUri: string, scope?: string): Promise<ByuToken> {
+    async function getCodeGrantToken (code: string, redirectUri: string): Promise<ByuToken> {
         debug('get code grant token')
         const oauth = await getOauth(clientId, clientSecret)
-        const config = {
+        const config: {[k: string]: any} = {
             code: code,
             redirect_uri: redirectUri,
-            scope: scope ? scope.split(/ +/) : []
+            scope: ['openid']
         }
         const result = await oauth.authorizationCode.getToken(config)
         const token = oauth.accessToken.create(result)
-        return processToken(token, () => token.refresh({}), token.token.refresh_token)
+        return processToken(token,() => token.refresh({}))
+    }
+
+    async function refreshToken (accessToken: string, refreshToken: string) : Promise<ByuToken> {
+        const token = await createToken(new Date(), accessToken, refreshToken)
+        await token.refresh()
+        return token
+    }
+
+    async function revokeToken (accessToken: string, refreshToken?: string) : Promise<ByuToken> {
+        const token = await createToken(new Date(), accessToken, refreshToken)
+        await token.revoke()
+        return token
     }
 
     return {
@@ -91,7 +101,9 @@ function byuOauth (clientId: string, clientSecret: string): ByuOAuth {
         getAuthorizationUrl,
         getClientGrantToken,
         getCodeGrantToken,
-        getOpenId
+        getOpenId,
+        refreshToken,
+        revokeToken
     }
 
 }
@@ -106,17 +118,16 @@ function lowerCaseHeaders(headers) {
     return result
 }
 
-function processToken(token: AccessToken, refresh: Function, refreshToken: string|void) : ByuToken {
+async function processToken(token: AccessToken, refresh: Function) : Promise<ByuToken> {
     const protect = {
         refreshing: undefined
     }
 
-    const result = {
+    const result: ByuToken = {
         accessToken: token.token.access_token,
         get expired(): boolean { return this.expiresAt < Date.now() },
         expiresAt: token.token.expires_at,
         get expiresIn(): number { return this.expiresAt - Date.now() },
-        jwt: token.token.id_token,
         refresh: async () => {
             if (protect.refreshing) return protect.refreshing
             protect.refreshing = refresh()
@@ -124,26 +135,47 @@ function processToken(token: AccessToken, refresh: Function, refreshToken: strin
             protect.refreshing = undefined
             return result
         },
-        refreshToken: refreshToken,
         revoke: async () => {
             token.revokeAll()
             result.accessToken = undefined
             result.expiresAt = new Date()
-            result.jwt = undefined
-            result.refreshToken = undefined
+            if (result.hasOwnProperty('resourceOwner')) result.resourceOwner = undefined
+            if (result.hasOwnProperty('refreshToken')) result.refreshToken = undefined
             return result
         },
         scope: token.token.scope,
         type: token.token.token_type
     }
 
-    if (!result.jwt) return result
+    if (token.token.refresh_token) result.refreshToken = token.token.refresh_token
 
-    return byuJwt.verifyJWT(result.jwt)
-        .then(function(verified) {
-            if (!verified) throw Error('Access token failed verification')
-            return result
-        })
+    const jwt = token.token.id_token
+    if (!jwt) return result
+
+    const decoded = await byuJwt.decodeJWT(jwt)
+    if (!decoded) throw Error('Access token failed verification')
+    result.resourceOwner = {
+        atHash: decoded.raw.at_hash,
+        aud: decoded.raw.aud,
+        authTime: decoded.raw.auth_time,
+        azp: decoded.raw.azp,
+        byuId: decoded.raw.byu_id,
+        exp: decoded.raw.exp,
+        iat: decoded.raw.iat,
+        iss: decoded.raw.iss,
+        jwt,
+        netId: decoded.raw.net_id,
+        personId: decoded.raw.person_id,
+        preferredFirstName: decoded.raw.preferred_first_name,
+        prefix: decoded.raw.prefix,
+        restOfName: decoded.raw.rest_of_name,
+        sortName: decoded.raw.sort_name,
+        sub: decoded.raw.sub,
+        suffix: decoded.raw.suffix,
+        surname: decoded.raw.surname,
+        surnamePosition: decoded.raw.surname_position
+    }
+    return result
 }
 
 function responseIndicatesInvalidToken(res: ResponseObject): boolean {
