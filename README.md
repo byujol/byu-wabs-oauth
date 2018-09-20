@@ -246,7 +246,7 @@ Make an HTTP/S request. The authorization header will automatically be set based
 
 ### getAuthorizationUrl
 
-`getAuthorizationUrl ( redirectUri: string, scope?: string, state?: string ): Promise<string>`
+`getAuthorizationUrl ( redirectUri: string, state?: string ): Promise<string>`
 
 Get the URL that needs to be visited to acquire a code grant code.
 
@@ -254,8 +254,8 @@ Get the URL that needs to be visited to acquire a code grant code.
 
 | Parameter | Type | Required | Default | Description |
 | --------- | ---- | -------- | ------- | ----------- |
-| *redirectUri* | `string` | Yes | N/A | The URL that the API manager will redirect to after the user has authorized the application. |
-| scope | `string` | No | `''` | The OAuth2 scopes to ask permission for. Each scope should be seperated by a space. |
+| **redirectUri** | `string` | Yes | N/A | The URL that the API manager will redirect to after the user has authorized the application. |
+| state | `string` | No | N/A | State information to add to the URL. You can read this state information when the `redirectUri` is called. |
 
 **Returns** a Promise that resolves to the URL.
 
@@ -266,7 +266,7 @@ Get the URL that needs to be visited to acquire a code grant code.
     const byuOAuth = require('byu-wabs-oauth')
     const oauth = await byuOauth('<client_id>', '<client_secret>')
 
-    const url = await oauth.getAuthorizationUrl('https://my-server.com', 'scope1 scope2', 'state info')
+    const url = await oauth.getAuthorizationUrl('https://my-server.com', 'state info')
 })()
 ```
 
@@ -295,7 +295,7 @@ None
 
 ### getCodeGrantToken
 
-`getCodeGrantToken ( code: string, redirectUri: string, scope?: string): Promise<Token>`
+`getCodeGrantToken ( code: string, redirectUri: string): Promise<Token>`
 
 Get a code grant [token](#byu-oauth-token).
 
@@ -303,9 +303,8 @@ Get a code grant [token](#byu-oauth-token).
 
 | Parameter | Type | Required | Default | Description |
 | --------- | ---- | -------- | ------- | ----------- |
-| *code* | `string` | Yes | N/A | The code grant code that signifies authorization |
-| *redirectUri* | `string` | Yes | N/A | The OAuth2 scopes to ask permission for. Each scope should be seperated by a space. |
-| scope | `string` | No | `''` | The OAuth2 scopes to ask permission for. Each scope should be seperated by a space. These scopes can be the same as those used in the [authorization URL](#getauthorizationurl) or they can be a lesser set. |
+| **code** | `string` | Yes | N/A | The code grant code that signifies authorization |
+| **redirectUri** | `string` | Yes | N/A | The original URI specified when calling the [getAuthorizationUrl](#getauthorizationurl) function. |
 
 **Returns** a Promise that resolves to a [token](#byu-oauth-token).
 
@@ -338,6 +337,58 @@ Get the latest OpenID information. This value changes so rarely that it may neve
 - tokenEndpoint - A string
 - userInfoEndpoint - A string
 
+### refreshToken
+
+`refreshToken ( accessToken: string, refreshToken: string ): Promise<Token>`
+
+Refresh an access token when you have both the access token and its associated refresh token.
+
+**Parameters**
+
+| Parameter | Type | Required | Default | Description |
+| --------- | ---- | -------- | ------- | ----------- |
+| **accessToken** | `string` | Yes | N/A | The access token to refresh. |
+| **refreshToken** | `string` | Yes | N/A | The associated refresh token. |
+
+**Returns** a Promise that resolves to a [token](#byu-oauth-token).
+
+**Example**
+
+```js
+;(async () => {
+    const byuOAuth = require('byu-wabs-oauth')
+    const oauth = await byuOauth('<client_id>', '<client_secret>')
+
+    const token = await oauth.refreshToken('<access_token>', '<refresh_token>')
+})()
+```
+
+### revokeToken
+
+`revokeToken ( accessToken: string, refreshToken?: string ): Promise<Token>`
+
+Refresh an access token when you have both the access token and its associated refresh token.
+
+**Parameters**
+
+| Parameter | Type | Required | Default | Description |
+| --------- | ---- | -------- | ------- | ----------- |
+| **accessToken** | `string` | Yes | N/A | The access token to revoke. |
+| refreshToken | `string` | No | N/A | The associated refresh token to also revoke. |
+
+**Returns** a Promise that resolves to a [token](#byu-oauth-token) that will be revoked.
+
+**Example**
+
+```js
+;(async () => {
+    const byuOAuth = require('byu-wabs-oauth')
+    const oauth = await byuOauth('<client_id>', '<client_secret>')
+
+    const token = await oauth.revokeToken('<access_token>', '<refresh_token>')
+})()
+```
+
 ## BYU OAuth Token
 
 This object has information about the current token as well as methods for managing the token. These are the properties:
@@ -346,9 +397,28 @@ This object has information about the current token as well as methods for manag
 - expired - A boolean that indicates if the token has expired.
 - expiresAt - A Date object that represents when the token will expire.
 - expiresIn - The number of milliseconds until the token expires.
-- jwt - The JWT that represents this access token.
-- refresh() - A function for refresing the token. See the [Refresh Tokens](#refresh-tokens) example.
+- refresh() - A function for refreshing the token. See the [Refresh Tokens](#refresh-tokens) example.
 - refreshToken - A string representing the refresh token. This value will be `undefined` for client grant tokens, although client grant tokens can still be refreshed using the `refresh` function on this object.
+- resourceOwner - Only valid for code grant tokens, this object contains the resource owner's properties:
+    - atHash: string
+    - aud: Array<string>
+    - authTime: number
+    - azp: string
+    - byuId: string
+    - exp: number
+    - iat: number
+    - iss: string
+    - jwt: string
+    - netId: string
+    - personId: string
+    - preferredFirstName: string
+    - prefix: string
+    - restOfName: string
+    - sortName: string
+    - sub: string
+    - suffix: string
+    - surname: string
+    - surnamePosition: string
 - revoke() - A function to revoke the current access token and refresh token. See the [Revoke Tokens](#revoke-tokens) example.
 - scope - A string representing the scopes associated with this token.
 - type - A string of the token type.
