@@ -160,6 +160,10 @@ describe('byu-wabs-oauth', function() {
       expect(token.accessToken).to.be.a('string')
     })
 
+    it('has correct identity', () => {
+      expect(token.resourceOwner.sortName).to.equal('Ithica, Oauth')
+    })
+
     it('can refresh token', async () => {
       const token = await oauth.getClientGrantToken()
       await token.refresh()
