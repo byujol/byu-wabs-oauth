@@ -7,6 +7,7 @@ const request = require('./request')
 export {}
 
 let cache = undefined
+let timeoutId
 
 module.exports = async function (ignoreCache: boolean): Promise<ByuOpenId> {
     if (!cache || ignoreCache) {
@@ -25,7 +26,7 @@ module.exports = async function (ignoreCache: boolean): Promise<ByuOpenId> {
             tokenEndpoint: data.token_endpoint,
             userInfoEndpoint: data.userinfo_endpoint
         }
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
             debug('cache expired')
             cache = undefined
         }, 600000)
@@ -34,3 +35,9 @@ module.exports = async function (ignoreCache: boolean): Promise<ByuOpenId> {
     }
     return Promise.resolve(cache)
 }
+
+process.on('exit', () => clearTimeout(timeoutId))      // app is closing
+process.on('SIGINT', () => clearTimeout(timeoutId))    // catches ctrl+c event
+process.on('SIGBREAK', () => clearTimeout(timeoutId))  // catches Windows ctrl+c event
+process.on('SIGUSR1', () => clearTimeout(timeoutId))   // catches "kill pid"
+process.on('SIGUSR2', () => clearTimeout(timeoutId))   // catches "kill pid"

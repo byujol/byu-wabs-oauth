@@ -12,6 +12,7 @@ const byuJwt = require('byu-jwt');
 const debug = require('debug')('byu-oauth:openId');
 const request = require('./request');
 let cache = undefined;
+let timeoutId;
 module.exports = function (ignoreCache) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!cache || ignoreCache) {
@@ -30,7 +31,7 @@ module.exports = function (ignoreCache) {
                 tokenEndpoint: data.token_endpoint,
                 userInfoEndpoint: data.userinfo_endpoint
             };
-            setTimeout(() => {
+            timeoutId = setTimeout(() => {
                 debug('cache expired');
                 cache = undefined;
             }, 600000);
@@ -41,4 +42,9 @@ module.exports = function (ignoreCache) {
         return Promise.resolve(cache);
     });
 };
+process.on('exit', () => clearTimeout(timeoutId)); // app is closing
+process.on('SIGINT', () => clearTimeout(timeoutId)); // catches ctrl+c event
+process.on('SIGBREAK', () => clearTimeout(timeoutId)); // catches Windows ctrl+c event
+process.on('SIGUSR1', () => clearTimeout(timeoutId)); // catches "kill pid"
+process.on('SIGUSR2', () => clearTimeout(timeoutId)); // catches "kill pid"
 //# sourceMappingURL=openid.js.map

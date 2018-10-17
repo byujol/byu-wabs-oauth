@@ -29,7 +29,7 @@ module.exports = async function getOauth(clientId: string, clientSecret: string,
             credentials,
             secret: clientSecret
         }
-        setTimeout(() => {
+        map[clientId].timeoutId = setTimeout(() => {
             debug('cache expired')
             map[clientId] = undefined
         }, 600000)
@@ -38,3 +38,16 @@ module.exports = async function getOauth(clientId: string, clientSecret: string,
     }
     return simpleOauth2.create(map[clientId].credentials)
 }
+
+function clearTimeouts() {
+    Object.keys(map).forEach(key => {
+        const value = map[key]
+        if (value) clearTimeout(value.timeoutId)
+    })
+}
+
+process.on('exit', clearTimeouts)      // app is closing
+process.on('SIGINT', clearTimeouts)    // catches ctrl+c event
+process.on('SIGBREAK', clearTimeouts)  // catches Windows ctrl+c event
+process.on('SIGUSR1', clearTimeouts)   // catches "kill pid"
+process.on('SIGUSR2', clearTimeouts)   // catches "kill pid"
