@@ -8,7 +8,7 @@ export {}
 
 const map = {}
 
-module.exports = async function getOauth(clientId: string, clientSecret: string, ignoreCache: boolean): Promise<OAuthClient> {
+module.exports = async function getOauth(clientId: string, clientSecret: string, ignoreCache?: boolean): Promise<OAuthClient> {
     if (ignoreCache || !map[clientId] || map[clientId].secret !== clientSecret) {
         debug('get fresh oauth client object')
         const openId = await getOpenId(ignoreCache)
