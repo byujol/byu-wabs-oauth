@@ -71,6 +71,7 @@ function byuOauth(clientId, clientSecret) {
             const token = yield processToken(rawToken, refresh);
             function refresh() {
                 return __awaiter(this, void 0, void 0, function* () {
+                    // await revokeToken(token.accessToken)
                     const newToken = yield getClientGrantToken();
                     token.accessToken = newToken.accessToken;
                     token.expiresAt = newToken.expiresAt;
@@ -149,7 +150,7 @@ function processToken(token, refresh) {
                 return result;
             }),
             revoke: () => __awaiter(this, void 0, void 0, function* () {
-                token.revokeAll();
+                yield token.revokeAll();
                 result.accessToken = undefined;
                 result.expiresAt = new Date();
                 if (result.hasOwnProperty('resourceOwner'))

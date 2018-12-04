@@ -60,6 +60,7 @@ function byuOauth (clientId: string, clientSecret: string): ByuOAuth {
         const rawToken = oauth.accessToken.create(result)
         const token = await processToken(rawToken, refresh)
         async function refresh() {
+            // await revokeToken(token.accessToken)
             const newToken = await getClientGrantToken()
             token.accessToken = newToken.accessToken
             token.expiresAt = newToken.expiresAt
@@ -136,7 +137,7 @@ async function processToken(token: AccessToken, refresh: Function) : Promise<Byu
             return result
         },
         revoke: async () => {
-            token.revokeAll()
+            await token.revokeAll()
             result.accessToken = undefined
             result.expiresAt = new Date()
             if (result.hasOwnProperty('resourceOwner')) result.resourceOwner = undefined
