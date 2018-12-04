@@ -10,7 +10,7 @@
   "dependencies": {
     "@types/node": "^10.10.1",
     "@types/simple-oauth2": "^2.2.0",
-    "byu-jwt": " ^1.0.7",
+    "byu-jwt": "^1.0.9",
     "debug": "^4.0.1",
     "simple-oauth2": "^2.2.1"
   },
