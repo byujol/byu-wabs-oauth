@@ -18,7 +18,7 @@ module.exports = function (ignoreCache) {
         if (!cache || ignoreCache) {
             debug('get fresh OpenID object');
             const res = yield request({ url: byuJwt.WELL_KNOWN_URL });
-            const data = JSON.parse(res.body);
+            const data = typeof res.body === 'object' ? res.body : JSON.parse(res.body);
             cache = {
                 authorizationEndpoint: data.authorization_endpoint,
                 idTokenSigningAlgorithmValuesSupported: data.id_token_signing_alg_values_supported,
