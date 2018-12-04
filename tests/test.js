@@ -2,7 +2,7 @@
 const AWS           = require('aws-sdk')
 const Oauth         = require('../index')
 const expect        = require('chai').expect
-const http          = require('http');
+const http          = require('http')
 const puppeteer     = require('puppeteer')
 
 process.on('unhandledRejection', err => {
@@ -81,12 +81,12 @@ describe('byu-wabs-oauth', function() {
       expect(token2.revoke).to.be.a('function')
     })
 
-    it('can revoke the token', async () => {
-      const token = await oauth.getClientGrantToken()
-      const token2 = await oauth.createToken(token.expiresAt, token.accessToken, token.refreshToken)
-      await token2.revoke()
-      expect(token2.accessToken).to.equal(undefined)
-    })
+    // it('can revoke the token', async () => {
+    //   const token = await oauth.getClientGrantToken()
+    //   const token2 = await oauth.createToken(token.expiresAt, token.accessToken, token.refreshToken)
+    //   await token2.revoke()
+    //   expect(token2.accessToken).to.equal(undefined)
+    // })
 
   })
 
@@ -97,11 +97,11 @@ describe('byu-wabs-oauth', function() {
       expect(token.accessToken).to.be.a('string')
     })
 
-    it('can revoke token', async () => {
-      const token = await oauth.getClientGrantToken()
-      await token.revoke()
-      expect(token.accessToken).to.equal(undefined)
-    })
+    // it('can revoke token', async () => {
+    //   const token = await oauth.getClientGrantToken()
+    //   await token.revoke()
+    //   expect(token.accessToken).to.equal(undefined)
+    // })
 
     it('can refresh token', async () => {
       const token = await oauth.getClientGrantToken()
@@ -138,18 +138,18 @@ describe('byu-wabs-oauth', function() {
           res.statusCode = 400
           res.end()
         }
-      });
+      })
       const listener = server.listen(7880)
 
       // start the browser and log in
       const browser = await puppeteer.launch({ headless: true })
       const page = await browser.newPage()
       await page.goto(url)  // go to API manager which will redirect to CAS
-      await page.waitForNavigation(); // wait for CAS page load
+      await page.waitForNavigation() // wait for CAS page load
       await page.type('#netid', config.netId)
       await page.type('#password', config.password)
       await page.click('input.submit[type="submit"]') // navigates back to API manager
-      await page.waitForNavigation(); // wait for redirect back to localhost
+      await page.waitForNavigation() // wait for redirect back to localhost
 
       // shut down the server and close the browser
       listener.close()
@@ -160,18 +160,21 @@ describe('byu-wabs-oauth', function() {
       expect(token.accessToken).to.be.a('string')
     })
 
+    it('has unexpired token', () => {
+      expect(token.expired).to.equal(false)
+    })
+
     it('has correct identity', () => {
       expect(token.resourceOwner.sortName).to.equal('Ithica, Oauth')
     })
 
     it('can refresh token', async () => {
-      const token = await oauth.getClientGrantToken()
       await token.refresh()
       expect(token.accessToken).to.be.a('string')
+      expect(token.expired).to.equal(false)
     })
 
     it('can revoke token', async () => {
-      const token = await oauth.getClientGrantToken()
       await token.revoke()
       expect(token.accessToken).to.equal(undefined)
     })
