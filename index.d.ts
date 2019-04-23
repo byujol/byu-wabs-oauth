@@ -1,34 +1,16 @@
 export = byuOAuth
 
-declare function byuOAuth (clientId: string, clientSecret: string): byuOAuth.ByuOAuth
+declare function byuOAuth (clientId: string, clientSecret: string): Promise<byuOAuth.ByuOAuth>
 
 declare namespace byuOAuth {
 
     export interface ByuOAuth {
-        authorizedRequest (options: RequestWithTokenOptions): Promise<ResponseObject>,
-        createToken (expiresAt: Date, accessToken: string, refreshToken?: string): Promise<ByuToken>,
         getAuthorizationUrl (redirectUri: string, state?: string): Promise<string>,
         getClientGrantToken (): Promise<ByuToken>,
-        getCodeGrantToken (code: string, redirectUri: string): Promise<ByuToken>,
-        getOpenId (ignoreCache?: boolean): Promise<ByuOpenId>,
+        getAuthCodeGrantToken (code: string, redirectUri: string): Promise<ByuToken>,
         refreshToken (accessToken: string, refreshToken: string) : Promise<ByuToken>,
-        revokeToken (accessToken: string, refreshToken?: string) : Promise<ByuToken>
-    }
+        revokeToken (accessToken: string, refreshToken?: string) : Promise<ByuToken>,
 
-    export interface ByuToken {
-        accessToken: string,
-        expired: boolean,
-        expiresAt: Date,
-        expiresIn: number,
-        resourceOwner?: ResourceOwner|void,
-        refresh (): Promise<ByuToken>,
-        refreshToken?: string|void,
-        revoke (): Promise<ByuToken>,
-        scope: string,
-        type: string
-    }
-
-    export interface ByuOpenId {
         authorizationEndpoint: string,
         idTokenSigningAlgorithmValuesSupported: Array<string>,
         issuer: string,
@@ -39,6 +21,16 @@ declare namespace byuOAuth {
         subjectTypesSupported: Array<string>,
         tokenEndpoint: string,
         userInfoEndpoint: string
+    }
+
+    export interface ByuToken {
+        accessToken: string,
+        expiresAt: Date,
+        expiresIn: number,
+        resourceOwner?: ResourceOwner|void,
+        refreshToken?: string,
+        scope: string,
+        type: string
     }
 
     export interface ResourceOwner {
@@ -61,28 +53,5 @@ declare namespace byuOAuth {
         suffix: string,
         surname: string,
         surnamePosition: string
-    }
-
-    export interface RequestOptions {
-        body?: object|string,
-        headers?: {[k: string]: string},
-        method?: string,
-        query?: object,
-        url: string
-    }
-
-    export interface RequestWithTokenOptions {
-        body?: object|string,
-        headers?: {[k: string]: string},
-        method?: string,
-        query?: object,
-        token?: ByuToken,
-        url: string
-    }
-
-    interface ResponseObject {
-        body: string|object|void,
-        headers: object,
-        statusCode: number
     }
 }

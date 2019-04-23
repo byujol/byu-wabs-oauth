@@ -1,202 +1,209 @@
-'use strict';
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-const byuJwt = require('byu-jwt')();
-const debug = require('debug')('byu-oauth');
-const getOauth = require('./oauth');
-const getOpenId = require('./openid');
-const request = require('./request');
-module.exports = byuOauth;
-function byuOauth(clientId, clientSecret) {
-    function authorizedRequest(options) {
-        return __awaiter(this, void 0, void 0, function* () {
-            debug('make authorized request');
-            options = Object.assign({}, options);
-            options.headers = options.headers ? Object.assign({}, options.headers) : {};
-            options.headers = lowerCaseHeaders(options.headers);
-            if (!options.token)
-                options.token = yield getClientGrantToken();
-            if (!options.headers.authorization)
-                options.headers.authorization = 'Bearer ' + options.token.accessToken;
-            let res = yield request(options);
-            if (responseIndicatesInvalidToken(res)) {
-                debug('retry authorized request with new token');
-                yield options.token.refresh();
-                options.headers.authorization = 'Bearer ' + options.token.accessToken;
-                res = yield request(options);
-            }
-            return res;
-        });
-    }
-    function createToken(expiresAt, accessToken, refreshToken) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const options = { access_token: accessToken, expires_in: +expiresAt - Date.now() };
-            if (refreshToken)
-                options.refresh_token = refreshToken;
-            const oauth = yield getOauth(clientId, clientSecret);
-            const token = oauth.accessToken.create(options);
-            return processToken(token, function refresh() {
-                if (refreshToken)
-                    return token.refresh({});
-                throw Error('Unable to refresh token');
-            });
-        });
-    }
-    function getAuthorizationUrl(redirectUri, state) {
-        return __awaiter(this, void 0, void 0, function* () {
-            debug('get authorization url');
-            const oauth = yield getOauth(clientId, clientSecret);
-            const config = {
-                redirect_uri: redirectUri,
-                scope: 'openid'
-            };
-            // if (scope !== undefined) config.scope = scope
-            if (state !== undefined)
-                config.state = state;
-            return oauth.authorizationCode.authorizeURL(config);
-        });
-    }
-    function getClientGrantToken() {
-        return __awaiter(this, void 0, void 0, function* () {
-            debug('get client grant token');
-            const oauth = yield getOauth(clientId, clientSecret);
-            const result = yield oauth.clientCredentials.getToken({});
-            const rawToken = oauth.accessToken.create(result);
-            const token = yield processToken(rawToken, refresh);
-            function refresh() {
-                return __awaiter(this, void 0, void 0, function* () {
-                    // await revokeToken(token.accessToken)
-                    const newToken = yield getClientGrantToken();
-                    token.accessToken = newToken.accessToken;
-                    token.expiresAt = newToken.expiresAt;
-                    token.scope = newToken.scope;
-                    token.type = newToken.type;
-                    return token;
-                });
-            }
-            return token;
-        });
-    }
-    function getCodeGrantToken(code, redirectUri) {
-        return __awaiter(this, void 0, void 0, function* () {
-            debug('get code grant token');
-            const oauth = yield getOauth(clientId, clientSecret);
-            const config = {
-                code: code,
-                redirect_uri: redirectUri,
-                scope: ['openid']
-            };
-            const result = yield oauth.authorizationCode.getToken(config);
-            const token = oauth.accessToken.create(result);
-            return processToken(token, () => token.refresh({}));
-        });
-    }
-    function refreshToken(accessToken, refreshToken) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const token = yield createToken(new Date(), accessToken, refreshToken);
-            yield token.refresh();
-            return token;
-        });
-    }
-    function revokeToken(accessToken, refreshToken) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const token = yield createToken(new Date(), accessToken, refreshToken);
-            yield token.revoke();
-            return token;
-        });
-    }
-    return {
-        authorizedRequest,
-        createToken,
-        getAuthorizationUrl,
-        getClientGrantToken,
-        getCodeGrantToken,
-        getOpenId,
-        refreshToken,
-        revokeToken
-    };
+'use strict'
+const byuJwt = require('byu-jwt')
+const Debug = require('debug')
+const request = require('./request')
+
+const debug = {
+  auth: Debug('byu-oauth:auth-code-grant'),
+  client: Debug('byu-oauth:client-grant'),
+  refresh: Debug('byu-oauth:refresh'),
+  revoke: Debug('byu-oauth:revoke'),
+  wellKnown: Debug('byu-oauth:well-known')
 }
-function lowerCaseHeaders(headers) {
-    const result = {};
-    if (headers) {
-        Object.keys(headers).forEach(key => {
-            result[key.toLowerCase()] = headers[key];
-        });
+const jwt = byuJwt()
+
+let wellKnownObject = {}
+let wellKnownTimeoutId
+
+module.exports = async function (clientId, clientSecret) {
+  await getTokenEndpoints()
+
+  const result = Object.create(wellKnownObject)
+  Object.assign(result, {
+    getAuthorizationUrl,
+    getClientGrantToken,
+    getAuthCodeGrantToken,
+    refreshToken,
+    revokeToken
+  })
+  return result
+
+  async function getAuthorizationUrl (redirectUri, state = '') {
+    debug.auth('get authorization url')
+    return this.authorizationEndpoint +
+      '?response_type=code&client_id=' + clientId +
+      '&redirect_uri=' + encodeURIComponent(redirectUri) +
+      '&scope=openid&state=' + encodeURIComponent(state)
+  }
+
+  async function getClientGrantToken () {
+    debug.client('getting client grant access token')
+    const res = await request({
+      body: 'grant_type=client_credentials',
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      method: 'POST',
+      url: this.tokenEndpoint
+    })
+    return evaluateTokenResult(debug.client, res)
+  }
+
+  async function getAuthCodeGrantToken (code, redirectUri) {
+    debug.auth('get auth code grant token')
+    const res = await request({
+      body: 'grant_type=authorization_code&code=' + code + '&redirect_uri=' + encodeURIComponent(redirectUri),
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      method: 'POST',
+      url: this.tokenEndpoint
+    })
+    return evaluateTokenResult(debug.auth, res)
+  }
+
+  async function refreshToken (refreshToken) {
+    debug.refresh('refreshing access token')
+    const res = await request({
+      body: 'grant_type=refresh_token&refresh_token=' + refreshToken,
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      method: 'POST',
+      url: this.tokenEndpoint
+    })
+    return evaluateTokenResult(debug.refresh, res)
+  }
+
+  async function revokeToken (accessToken, refreshToken) {
+    const promises = []
+    if (accessToken) {
+      debug.revoke('revoking access token')
+      const promise = revoke(this, accessToken, 'access_token')
+        .then(() => debug.revoke('revoked access token'))
+        .catch(err => {
+          debug.revoke('failed to revoke access token')
+          throw err
+        })
+      promises.push(promise)
     }
-    return result;
+
+    if (refreshToken) {
+      debug.revoke('revoking refresh token')
+      const promise = revoke(this, accessToken, 'refresh_token')
+        .then(() => debug.revoke('revoked refresh token'))
+        .catch(err => {
+          debug.revoke('failed to revoke refresh token')
+          throw err
+        })
+      promises.push(promise)
+    }
+
+    return Promise.all(promises)
+  }
+
 }
-function processToken(token, refresh) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const protect = {
-            refreshing: undefined
-        };
-        const result = {
-            accessToken: token.token.access_token,
-            get expired() { return this.expiresAt < Date.now(); },
-            expiresAt: token.token.expires_at,
-            get expiresIn() { return this.expiresAt - Date.now(); },
-            refresh: () => __awaiter(this, void 0, void 0, function* () {
-                if (protect.refreshing)
-                    return protect.refreshing;
-                protect.refreshing = refresh();
-                const result = yield protect.refreshing;
-                protect.refreshing = undefined;
-                return result;
-            }),
-            revoke: () => __awaiter(this, void 0, void 0, function* () {
-                yield token.revokeAll();
-                result.accessToken = undefined;
-                result.expiresAt = new Date();
-                if (result.hasOwnProperty('resourceOwner'))
-                    result.resourceOwner = undefined;
-                if (result.hasOwnProperty('refreshToken'))
-                    result.refreshToken = undefined;
-                return result;
-            }),
-            scope: token.token.scope,
-            type: token.token.token_type
-        };
-        if (token.token.refresh_token)
-            result.refreshToken = token.token.refresh_token;
-        const jwt = token.token.id_token;
-        if (!jwt)
-            return result;
-        const decoded = yield byuJwt.decodeJWT(jwt);
-        if (!decoded)
-            throw Error('Access token failed verification');
-        result.resourceOwner = {
-            atHash: decoded.raw.at_hash,
-            aud: decoded.raw.aud,
-            authTime: decoded.raw.auth_time,
-            azp: decoded.raw.azp,
-            byuId: decoded.raw.byu_id,
-            exp: decoded.raw.exp,
-            iat: decoded.raw.iat,
-            iss: decoded.raw.iss,
-            jwt,
-            netId: decoded.raw.net_id,
-            personId: decoded.raw.person_id,
-            preferredFirstName: decoded.raw.preferred_first_name,
-            prefix: decoded.raw.prefix,
-            restOfName: decoded.raw.rest_of_name,
-            sortName: decoded.raw.sort_name,
-            sub: decoded.raw.sub,
-            suffix: decoded.raw.suffix,
-            surname: decoded.raw.surname,
-            surnamePosition: decoded.raw.surname_position
-        };
-        return result;
-    });
+
+async function evaluateTokenResult(debug, res) {
+  const { statusCode, body } = res
+  if (statusCode === 200) {
+    let time = Date.now() + 1000 * body.expires_in
+    if (time > 8640000000000000) time = 8640000000000000
+    debug('retrieved access token')
+    const result = {
+      accessToken: body.access_token,
+      expiresAt: new Date(time),
+      expiresIn: body.expires_in,
+      scope: body.scope,
+      type: body.token_type
+    }
+    if (body.refresh_token) result.refreshToken = body.refresh_token
+    if (body.id_token) {
+      const decoded = await jwt.decodeJWT(body.id_token)
+      if (!decoded) throw Error('OpenID token failed verification')
+      result.resourceOwner = {
+        atHash: decoded.raw.at_hash,
+        aud: decoded.raw.aud,
+        authTime: decoded.raw.auth_time,
+        azp: decoded.raw.azp,
+        byuId: decoded.raw.byu_id,
+        exp: decoded.raw.exp,
+        iat: decoded.raw.iat,
+        iss: decoded.raw.iss,
+        jwt: body.id_token,
+        netId: decoded.raw.net_id,
+        personId: decoded.raw.person_id,
+        preferredFirstName: decoded.raw.preferred_first_name,
+        prefix: decoded.raw.prefix,
+        restOfName: decoded.raw.rest_of_name,
+        sortName: decoded.raw.sort_name,
+        sub: decoded.raw.sub,
+        suffix: decoded.raw.suffix,
+        surname: decoded.raw.surname,
+        surnamePosition: decoded.raw.surname_position
+      }
+    }
+    return result
+
+  } else {
+    debug('unable to get access token')
+    const err = Error('Unable to get access token')
+    err.statusCode = statusCode
+    err.details = body
+    throw err
+  }
 }
-function responseIndicatesInvalidToken(res) {
-    return res.statusCode === 401
-        && String(res.body).indexOf('<ams:code>900901</ams:code>') !== -1;
+
+async function getTokenEndpoints () {
+  // make request to open id well known url
+  debug.wellKnown('get fresh well known data')
+  const res = await request({ url: byuJwt.WELL_KNOWN_URL })
+  const data = typeof res.body === 'object' ? res.body : JSON.parse(res.body)
+
+  // cache important data
+  Object.assign(wellKnownObject, {
+    authorizationEndpoint: data.authorization_endpoint,
+    idTokenSigningAlgorithmValuesSupported: data.id_token_signing_alg_values_supported,
+    issuer: data.issuer,
+    jwksUri: data.jwks_uri,
+    responseTypesSupported: data.response_types_supported,
+    revocationEndpoint: data.revocation_endpoint,
+    scopesSupported: data.scopes_supported,
+    subjectTypesSupported: data.subject_types_supported,
+    tokenEndpoint: data.token_endpoint,
+    userInfoEndpoint: data.userinfo_endpoint
+  })
+
+  // determine how long the cache is good for
+  let cacheDuration = 600  // 10 minute default
+  if (res.headers['cache-control']) {
+    const rx = /(?:^|,|\s)max-age=(\d+)(?:,|\s|$)/
+    const match = rx.exec(res.headers['cache-control'])
+    if (match) cacheDuration = +match[1]
+  }
+
+  // set cache timeout
+  wellKnownTimeoutId = setTimeout(() => {
+    debug.wellKnown('cache expired')
+    getTokenEndpoints()
+      .catch(err => {
+        debug.wellKnown('unable to refresh well known information')
+        console.error(err.stack)
+      })
+  }, cacheDuration * 1000)
 }
-module.exports = byuOauth;
-//# sourceMappingURL=index.js.map
+
+function revoke (context, token, type) {
+  return request({
+    body: 'token=' + token + '&token_type_hint=' + type,
+    headers: {
+      Authorization: 'Basic ' + Buffer.from(context.clientId + ':' + context.clientSecret).toString('base64'),
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    method: 'POST',
+    url: context.revocationEndpoint
+  })
+}

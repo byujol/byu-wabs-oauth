@@ -22,7 +22,7 @@ describe('byu-wabs-oauth', function() {
       Name: 'wabs-oauth-test.dev.config',
       WithDecryption: true
     }
-    ssm.getParameter(params, function(err, param) {
+    ssm.getParameter(params, async function(err, param) {
       if (err) {
         console.error('AWS Error: ' + err.message)
         console.log('Make sure that you have awslogin (https://github.com/byu-oit/awslogin) ' +
@@ -39,7 +39,7 @@ describe('byu-wabs-oauth', function() {
         process.exit(1)
       }
 
-      oauth = Oauth(config.consumerKey, config.consumerSecret)
+      oauth = await Oauth(config.consumerKey, config.consumerSecret)
       done()
     })
   })
@@ -48,46 +48,6 @@ describe('byu-wabs-oauth', function() {
     setTimeout(() => {
       process.exit(0)
     }, 500)
-  })
-
-  describe('authorizedRequest', () => {
-
-    it('will add bearer token to request', async () => {
-      const token = await oauth.getClientGrantToken()
-      const res = await oauth.authorizedRequest({
-        url: 'https://api.byu.edu:443/openid-userinfo/v1/userinfo?schema=openid',
-        token
-      })
-      expect(res.statusCode).to.equal(200)
-    })
-
-    it('will automatically retry if a bad token is present', async () => {
-      const token = await oauth.getClientGrantToken()
-      token.accessToken = token.accessToken.substr(1) + token.accessToken[0]
-      const res = await oauth.authorizedRequest({
-        url: 'https://api.byu.edu:443/openid-userinfo/v1/userinfo?schema=openid',
-        token
-      })
-      expect(res.statusCode).to.equal(200)
-    })
-
-  })
-
-  describe('createToken', () => {
-
-    it('can create token', async () => {
-      const token = await oauth.getClientGrantToken()
-      const token2 = await oauth.createToken(token.expiresAt, token.accessToken, token.refreshToken)
-      expect(token2.revoke).to.be.a('function')
-    })
-
-    // it('can revoke the token', async () => {
-    //   const token = await oauth.getClientGrantToken()
-    //   const token2 = await oauth.createToken(token.expiresAt, token.accessToken, token.refreshToken)
-    //   await token2.revoke()
-    //   expect(token2.accessToken).to.equal(undefined)
-    // })
-
   })
 
   describe('getClientGrantToken', () => {
@@ -103,33 +63,33 @@ describe('byu-wabs-oauth', function() {
     //   expect(token.accessToken).to.equal(undefined)
     // })
 
-    it('can refresh token', async () => {
-      const token = await oauth.getClientGrantToken()
-      await token.refresh()
-      expect(token.accessToken).to.be.a('string')
-    })
+    // it('can refresh token', async () => {
+    //   const token = await oauth.getClientGrantToken()
+    //   await token.refresh()
+    //   expect(token.accessToken).to.be.a('string')
+    // })
 
   })
 
   describe('getCodeGrantToken', () => {
+    const redirectUrl = 'http://localhost:7880/'
+    let listener
     let token
 
     before(async () => {
-      const redirectUrl = 'http://localhost:7880/'
-      const url = await oauth.getAuthorizationUrl(redirectUrl)
-
       // start a server that will listen for the OAuth code grant redirect
       const server = http.createServer((req, res) => {
         const match = /^\/\?code=(.+)$/.exec(req.url)
         if (match) {
           const [, code ] = match
           res.statusCode = 200
-          oauth.getCodeGrantToken(code, 'http://localhost:7880/')
+          oauth.getAuthCodeGrantToken(code, redirectUrl)
             .then(t => {
               token = t
               res.end()
             })
             .catch(err => {
+              console.error(err.stack)
               res.statusCode = 500
               res.write(err.stack)
               res.end()
@@ -139,9 +99,14 @@ describe('byu-wabs-oauth', function() {
           res.end()
         }
       })
-      const listener = server.listen(7880)
 
-      // start the browser and log in
+      listener = server.listen(7880)
+    })
+
+    // start the browser and log in
+    beforeEach(async() => {
+      const url = await oauth.getAuthorizationUrl(redirectUrl)
+
       const browser = await puppeteer.launch({ headless: true })
       const page = await browser.newPage()
       await page.goto(url)  // go to API manager which will redirect to CAS
@@ -151,17 +116,17 @@ describe('byu-wabs-oauth', function() {
       await page.click('input.submit[type="submit"]') // navigates back to API manager
       await page.waitForNavigation() // wait for redirect back to localhost
 
-      // shut down the server and close the browser
-      listener.close()
+      // close the browser
       await browser.close()
+    })
+
+    after(() => {
+      // shut down the server
+      listener.close()
     })
 
     it('can get token', () => {
       expect(token.accessToken).to.be.a('string')
-    })
-
-    it('has unexpired token', () => {
-      expect(token.expired).to.equal(false)
     })
 
     it('has correct identity', () => {
@@ -169,14 +134,16 @@ describe('byu-wabs-oauth', function() {
     })
 
     it('can refresh token', async () => {
-      await token.refresh()
+      const before = { accessToken: token.accessToken, refreshToken: token.refreshToken }
+      token = await oauth.refreshToken(token.refreshToken)
+      const after = { accessToken: token.accessToken, refreshToken: token.refreshToken }
       expect(token.accessToken).to.be.a('string')
-      expect(token.expired).to.equal(false)
+      expect(after.accessToken).not.to.equal(before.accessToken)
+      expect(after.refreshToken).not.to.equal(before.refreshToken)
     })
 
     it('can revoke token', async () => {
-      await token.revoke()
-      expect(token.accessToken).to.equal(undefined)
+      await oauth.revokeToken(token.accessToken, token.refreshToken)
     })
 
   })
