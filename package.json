@@ -5,11 +5,11 @@
   "main": "index.js",
   "typings": "index.d.ts",
   "dependencies": {
-    "byu-jwt": "^1.0.9",
-    "debug": "^4.0.1"
+    "byu-jwt": "^1.0.10",
+    "debug": "^4.1.1"
   },
   "devDependencies": {
-    "aws-sdk": "^2.315.0",
+    "aws-sdk": "^2.441.0",
     "chai": "^3.5.0",
     "mocha": "^5.2.0",
     "puppeteer": "^1.14.0",
