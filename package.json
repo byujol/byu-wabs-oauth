@@ -3,9 +3,6 @@
   "version": "3.0.0",
   "description": "",
   "main": "index.js",
-  "directories": {
-    "test": "tests"
-  },
   "typings": "index.d.ts",
   "dependencies": {
     "byu-jwt": "^1.0.9",
@@ -22,7 +19,7 @@
     "node": ">=7.6.0"
   },
   "scripts": {
-    "test": "mocha tests/*.js"
+    "test": "mocha test/*.js"
   },
   "repository": {
     "type": "git",
