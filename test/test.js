@@ -1,20 +1,24 @@
-"use strict"
-const AWS           = require('aws-sdk')
-const Oauth         = require('../index')
-const expect        = require('chai').expect
-const http          = require('http')
-const puppeteer     = require('puppeteer')
+'use strict'
+process.env.DEBUG = 'wabs*'
+const AWS = require('aws-sdk')
+const Oauth = require('../index')
+const expect = require('chai').expect
+const http = require('http')
+const puppeteer = require('puppeteer')
+
+/* global describe before beforeEach after it */
 
 process.on('unhandledRejection', err => {
   console.error(err.stack)
 })
 
-describe('byu-wabs-oauth', function() {
+describe('byu-wabs-oauth', function () {
   const config = {}
   let oauth
 
   // get WSO2 credentials from AWS parameter store
-  before(done => {
+  before(function (done) {
+    this.timeout(5000)
     console.log('Acquiring test credentials. Please wait...')
 
     const ssm = new AWS.SSM({ region: 'us-west-2' })
@@ -22,7 +26,7 @@ describe('byu-wabs-oauth', function() {
       Name: 'wabs-oauth-test.dev.config',
       WithDecryption: true
     }
-    ssm.getParameter(params, async function(err, param) {
+    ssm.getParameter(params, async function (err, param) {
       if (err) {
         console.error('AWS Error: ' + err.message)
         console.log('Make sure that you have awslogin (https://github.com/byu-oit/awslogin) ' +
@@ -51,24 +55,10 @@ describe('byu-wabs-oauth', function() {
   })
 
   describe('getClientGrantToken', () => {
-
     it('can get token', async () => {
       const token = await oauth.getClientGrantToken()
       expect(token.accessToken).to.be.a('string')
     })
-
-    // it('can revoke token', async () => {
-    //   const token = await oauth.getClientGrantToken()
-    //   await token.revoke()
-    //   expect(token.accessToken).to.equal(undefined)
-    // })
-
-    // it('can refresh token', async () => {
-    //   const token = await oauth.getClientGrantToken()
-    //   await token.refresh()
-    //   expect(token.accessToken).to.be.a('string')
-    // })
-
   })
 
   describe('getCodeGrantToken', () => {
@@ -76,12 +66,13 @@ describe('byu-wabs-oauth', function() {
     let listener
     let token
 
-    before(async () => {
+    before(function (done) {
+      this.timeout(5000)
       // start a server that will listen for the OAuth code grant redirect
       const server = http.createServer((req, res) => {
         const match = /^\/\?code=(.+)$/.exec(req.url)
         if (match) {
-          const [, code ] = match
+          const [ , code ] = match
           res.statusCode = 200
           oauth.getAuthCodeGrantToken(code, redirectUrl)
             .then(t => {
@@ -100,21 +91,33 @@ describe('byu-wabs-oauth', function() {
         }
       })
 
-      listener = server.listen(7880)
+      listener = server.listen(7880, done)
     })
 
     // start the browser and log in
-    beforeEach(async() => {
+    beforeEach(async function () {
+      token = null
+
+      this.timeout(5000)
       const url = await oauth.getAuthorizationUrl(redirectUrl)
 
       const browser = await puppeteer.launch({ headless: true })
       const page = await browser.newPage()
-      await page.goto(url)  // go to API manager which will redirect to CAS
-      await page.waitForNavigation() // wait for CAS page load
+      await page.goto(url) // go to API manager which will redirect to CAS
+      await page.waitForSelector('#netid') // wait for CAS page load
       await page.type('#netid', config.netId)
       await page.type('#password', config.password)
       await page.click('input.submit[type="submit"]') // navigates back to API manager
       await page.waitForNavigation() // wait for redirect back to localhost
+
+      await new Promise(resolve => {
+        const intervalId = setInterval(() => {
+          if (token !== null) {
+            clearInterval(intervalId)
+            resolve()
+          }
+        })
+      })
 
       // close the browser
       await browser.close()
@@ -145,7 +148,5 @@ describe('byu-wabs-oauth', function() {
     it('can revoke token', async () => {
       await oauth.revokeToken(token.accessToken, token.refreshToken)
     })
-
   })
-
 })
