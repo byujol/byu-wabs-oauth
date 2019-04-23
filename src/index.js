@@ -104,10 +104,9 @@ module.exports = async function (clientId, clientSecret) {
 
     return Promise.all(promises)
   }
-
 }
 
-async function evaluateTokenResult(debug, res) {
+async function evaluateTokenResult (debug, res) {
   const { statusCode, body } = res
   if (statusCode === 200) {
     let time = Date.now() + 1000 * body.expires_in
@@ -147,7 +146,6 @@ async function evaluateTokenResult(debug, res) {
       }
     }
     return result
-
   } else {
     debug('unable to get access token')
     const err = Error('Unable to get access token')
@@ -178,7 +176,7 @@ async function getTokenEndpoints () {
   })
 
   // determine how long the cache is good for
-  let cacheDuration = 600  // 10 minute default
+  let cacheDuration = 600 // 10 minute default
   if (res.headers['cache-control']) {
     const rx = /(?:^|,|\s)max-age=(\d+)(?:,|\s|$)/
     const match = rx.exec(res.headers['cache-control'])
@@ -207,3 +205,9 @@ function revoke (context, token, type) {
     url: context.revocationEndpoint
   })
 }
+
+process.on('exit', () => clearTimeout(wellKnownTimeoutId)) // app is closing
+process.on('SIGINT', () => clearTimeout(wellKnownTimeoutId)) // catches ctrl+c event
+process.on('SIGBREAK', () => clearTimeout(wellKnownTimeoutId)) // catches Windows ctrl+c event
+process.on('SIGUSR1', () => clearTimeout(wellKnownTimeoutId)) // catches "kill pid"
+process.on('SIGUSR2', () => clearTimeout(wellKnownTimeoutId)) // catches "kill pid"
