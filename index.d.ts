@@ -8,7 +8,7 @@ declare namespace byuOAuth {
         getAuthorizationUrl (redirectUri: string, state?: string): Promise<string>,
         getClientGrantToken (): Promise<ByuToken>,
         getAuthCodeGrantToken (code: string, redirectUri: string): Promise<ByuToken>,
-        refreshToken (accessToken: string, refreshToken: string) : Promise<ByuToken>,
+        refreshToken (refreshToken: string) : Promise<ByuToken>,
         revokeToken (accessToken: string, refreshToken?: string) : Promise<ByuToken>,
 
         authorizationEndpoint: string,
