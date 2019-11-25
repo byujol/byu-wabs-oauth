@@ -104,10 +104,10 @@ describe('byu-wabs-oauth', function () {
       const browser = await puppeteer.launch({ headless: true })
       const page = await browser.newPage()
       await page.goto(url) // go to API manager which will redirect to CAS
-      await page.waitForSelector('#netid') // wait for CAS page load
-      await page.type('#netid', config.netId)
+      await page.waitForSelector('#username') // wait for CAS page load
+      await page.type('#username', config.netId)
       await page.type('#password', config.password)
-      await page.click('input.submit[type="submit"]') // navigates back to API manager
+      await page.click('input[type=submit]') // navigates back to API manager
       await page.waitForNavigation() // wait for redirect back to localhost
 
       await new Promise(resolve => {
