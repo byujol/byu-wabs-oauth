@@ -5,7 +5,7 @@
   "main": "index.js",
   "typings": "index.d.ts",
   "dependencies": {
-    "byu-jwt": "^2.0.0",
+    "byu-jwt": "^3.0.2",
     "debug": "^4.1.1"
   },
   "devDependencies": {
